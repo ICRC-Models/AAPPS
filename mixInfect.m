@@ -3,18 +3,20 @@ function dPop = mixInfect(pop , perActInf , acts , partners)
 sumall = @(x) sum(x(:));
 
 perActInf = [0 , 0.84 , 0; 0.243 , 0 , 0.0865 ; 0 , 0.62 , 0]; % [U , P , R]
+perActHiv = 0.82 * 10 ^ -2;
 
 perPartnerInf = min(1 - (1 - perActInf) .^ acts , 0.99);
+perPartnerHiv = min(1 - (1 - perActHiv) .^ acts , 0.99);
 
 hAssortMat = eye(2);
-rAssortMat = eye(3);
+rAssortMat = eye(sites);
 
 hAssort = 0.8; % extent of HIV serosorting
 rAssort = 0.7; % assorting by risk, tied to pharyngeal infection or lack thereof
 
 mixMatHiv = zeros(2 , 2); % positive or negative
-mixMatRisk = zeros(2 , risk , risk);
-mixMat = zeros(2 , 2 , risk , risk);
+mixMatRisk = zeros(2 , sites , sites);
+mixMat = zeros(2 , 2 , sites , sites);
 
 byHiv = sum(sum(pop , 2) , 3); % sum across sti types and sites
 hivNeg = byHiv(1) + byHiv(5); % negative, on PrEP, HIV immune
@@ -33,7 +35,7 @@ hivPos_Risk = sum(byHiv_Risk(2 : 4 , :) , 1) ./ hivPos; % sum[(HIV-positive stat
 
 % Mixing matrix by risk group
 for h = 1 : 2
-    for r = 1 : risk
+    for r = 1 : sites
         mixMatRisk(h , : , r) = hivNeg_Risk(r) .* (1 - rAssort); % pure random mixing by site for non-pharyngeal / pharyngeal infected HIV negative / HIV positive
     end
 end
@@ -63,7 +65,7 @@ fracPop = [hivNeg_Risk ; hivPos_Risk];
 %     fracAct(: , : , f) = partners(: , : , f) ./ sum(partners , 3);
 % end
 hivPosNeg = 2;
-adjustFac = zeros(hivPosNeg , hivPosNeg , risk , risk);
+adjustFac = zeros(hivPosNeg , hivPosNeg , sites , sites);
 % ratio of HIV+ with infection at site : HIV- with infection at site
 for s = 1 : sites
     for ss = 1 : sites
@@ -96,15 +98,24 @@ for s = 1 : sites
 end
 %%
 % STIs (other than HIV) per year per partnership transmission
-perYearInf = zeros(5 , stiTypes - 1 , sites , sites);
+perYearInf = zeros(5 , stiTypes - 1 , 3 , sites , sites);
 for h = 1 : 5
     for s = 2 : stiTypes
         for i = 1 : sites
             for ii = 1 : sites
                 popSubtotal = sum(sum(pop(h , s , :)));
                 if popSubtotal > 0
-                    perYearInf(h , s - 1 , ii , i) = ...
-                        - log(1 - perPartnerInf(ii , i)) ...
+                    joint = perPartnerInf(ii , i) * perPartnerHiv * ...
+                        heaviside(h - 3);
+                    perYearInf(h , s - 1 , 1 , ii , i) = ...
+                        - log(1 - (perPartnerInf(ii , i) - joint)) ...
+                        .* pop(h , s , i) ./ popSubtotal;
+                    perYearInf(h , s - 1 , 2 , ii , i) = ...
+                        - log(1 - perPartnerHiv * heaviside(h - 3) - joint) ...
+                        .* pop(h , s , i) ./ popSubtotal;
+                    perYearInf(h , s - 1 , 3 , ii , i) = ...
+                        - log(1 - perPartnerInf(ii , i) * perPartnerHiv...
+                        * heaviside(h - 3)) ...
                         .* pop(h , s , i) ./ popSubtotal;
                 end
             end
@@ -112,10 +123,11 @@ for h = 1 : 5
     end
 end
 
+
 %%
 % STIs (other than HIV) lambda
-
-lambda = zeros(2 , sites , sites , stiTypes);
+infs = 3; % Other STI, HIV , HIV + Other STI
+lambda = zeros(2 , sites , infs , sites , stiTypes);
 for hivStat = 1 : hivPosNeg
     for hh = 1 : hivStatus
         hivStatPartner = 1;
@@ -125,10 +137,12 @@ for hivStat = 1 : hivPosNeg
         for s = 1 : sites
             for ss = 1 : sites
                 for t = 1 : stiTypes - 1
-                    lambda(hivStat , s , ss , t) = lambda(hivStat , s , ss , t) ...
+                    for i = 1 : infs
+                    lambda(hivStat , s , i , ss , t) = lambda(hivStat , s , i , ss , t) ...
                         + partnersAdj(hivStat , hivStatPartner , s , ss) ...
                         * mixMat(hivStat , hivStatPartner , s , ss)...
-                        * perYearInf(hh , t , s , ss);
+                        * perYearInf(hh , t , i , ss , s);
+                    end
                 end
             end
         end
