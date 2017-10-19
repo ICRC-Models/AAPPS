@@ -7,9 +7,9 @@ tspan = 1 / stepsPerYear;
 popInitial = zeros(hivStatus , stiTypes , sites);
 % site index indicates site of infection and risk for STI-positive individuals
 % For STI-negative individuals, site index indicates risk
-popInitial(1 , 1 , 1) = 100469 - 1000 - 1000; % N
-popInitial(1 , 1 , 2) = 1000; % N , urethral
-popInitial(1 , 1 , 3) = 1000; % N , pharyngeal
+popInitial(1 , 1 , 1) =  1000; % N
+popInitial(1 , 1 , 2) = 100469 - 5000; % N , urethral
+popInitial(1 , 1 , 3) = 4000; % N , pharyngeal
 popInitial(2 , 1 , 1) = 424 * 0.9; % I
 popInitial(2 , 2 , 2 : 3) = 424 * 0.1 / 3;
 popInitial(3 , 1 , 1) = 390; % K

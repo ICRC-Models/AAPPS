@@ -24,8 +24,8 @@ hivPos = sum(byHiv(2 : 4)); % infectious, tested, treated
 total = sumall(byHiv); % total population
 
 % Mixing matrix by HIV status
-mixMatHiv(: , 1) = hivPos / total .* (1 - hAssort); % random mixing
-mixMatHiv(: , 2) = hivNeg / total .* (1 - hAssort); % random mixing
+mixMatHiv(: , 2) = hivPos / total .* (1 - hAssort); % random mixing
+mixMatHiv(: , 1) = hivNeg / total .* (1 - hAssort); % random mixing
 mixMatHiv = mixMatHiv + hAssort .* hAssortMat; % assortative mixing by HIV status
 
 % Site of infection being used as a proxy for risk
@@ -36,7 +36,8 @@ hivPos_Risk = sum(byHiv_Risk(2 : 4 , :) , 1) ./ hivPos; % sum[(HIV-positive stat
 % Mixing matrix by risk group
 for h = 1 : 2
     for r = 1 : sites
-        mixMatRisk(h , : , r) = hivNeg_Risk(r) .* (1 - rAssort); % pure random mixing by site for non-pharyngeal / pharyngeal infected HIV negative / HIV positive
+        mixMatRisk(1 , : , r) = hivNeg_Risk(r) .* (1 - rAssort); % pure random mixing by site for non-pharyngeal / pharyngeal infected HIV negative / HIV positive
+        mixMatRisk(2 , : , r) = hivPos_Risk(r) .* (1 - rAssort); % pure random mixing by site for non-pharyngeal / pharyngeal infected HIV positive
     end
 end
 for h = 1 : 2
@@ -114,8 +115,7 @@ for h = 1 : 5
                         - log(1 - perPartnerHiv * heaviside(h - 3) - joint) ...
                         .* pop(h , s , i) ./ popSubtotal;
                     perYearInf(h , s - 1 , 3 , ii , i) = ...
-                        - log(1 - perPartnerInf(ii , i) * perPartnerHiv...
-                        * heaviside(h - 3)) ...
+                        - log(1 - joint) ...
                         .* pop(h , s , i) ./ popSubtotal;
                 end
             end
@@ -131,7 +131,7 @@ lambda = zeros(2 , sites , infs , sites , stiTypes);
 for hivStat = 1 : hivPosNeg
     for hh = 1 : hivStatus
         hivStatPartner = 1;
-        if hh > 2
+        if hh > 1 && h < 5
             hivStatPartner = 2;
         end
         for s = 1 : sites
