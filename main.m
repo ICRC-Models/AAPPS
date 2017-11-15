@@ -2,19 +2,20 @@
 close all;clear all;clc
 load('genParams')
 load('gcParams')
+load('gcHivParams')
 load('partnerParams')
-stepsPerYear = 12;
+stepsPerYear = 200;
 tspan = 1 / stepsPerYear;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
-popInitial(1 , 1 , 1) =  1000; % N
-popInitial(1 , 1 , 2) = 100469 - 5000; % N , urethral
-popInitial(1 , 1 , 3) = 4000; % N , pharyngeal
-popInitial(2 , 1 , 1) = 424 * 0.9; % I
-popInitial(2 , 2 , 2 : 3) = 424 * 0.1 / 3;
-popInitial(3 , 1 , 1) = 390; % K
-popInitial(4 , 1 , 1) = 3972; % V
-popInitial(5 , 1 , 1) = 10526 + 27366; % P
-popInitial(: , 2 , 2 : 3) = popInitial(: , 1 , 2 : 3) + 50;
+popInitial(1 , 1 , 1 , 3) =  100469 - 5000; % N (low risk)
+popInitial(1 , 1 , 1 , 2) = 1000; % N (medium risk)
+popInitial(1 , 1 , 1 , 1) = 4000; % N (high risk)
+popInitial(2 , 1 , 1 , 3) = 424 * 0.9; % I (low risk)
+popInitial(2 , 2 , 2 : 4 , 1 : 2) = 424 * 0.1 / 6; % I (high and medium risk)
+popInitial(3 , 1 , 1 , 3) = 390; % K
+popInitial(4 , 1 , 1 , 3) = 3972; % V
+popInitial(5 , 1 , 1 , 3) = 10526 + 27366; % P
+popInitial(: , 1 , 1 , :) = popInitial(: , 1 , 1 , :) + 1;
 %%
 partners = c;
 pop = popInitial;
