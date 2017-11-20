@@ -11,9 +11,17 @@ stiTypes = 4
 (3) chlamydia
 (4) syphilis
 
-sites = 3
-(1) rectal
-(2) urethral
-(3) pharyngeal
+sites = 4
+(1) none
+(2) rectal
+(3) urethral
+(4) pharyngeal
 
 risk = 3
+
+Running the model
+------------------
+The model can be run from main.m. 
+The initial "seed population" for the model is popInitial
+t is the time vector that is returned by the ODE solver
+pop is the population vector that is returned by the ODE solver 
