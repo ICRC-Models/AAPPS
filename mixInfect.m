@@ -4,7 +4,7 @@ function dPop = mixInfect(t , pop , hivStatus , stiTypes , sites , ...
     kTreat_i , k_treatOut , kprep_u , kprep_u_ps , kTest_u , kTest_u_ps , ...
     kTreat_u , kTreat_u_ps , kTreat_k , kTreat_k_ps , kprep_p , kprep_p_ps , kTest_p , ...
     kTest_p_ps , kTreat_p , kTreat_p_ps , kprep_r , kprep_r_ps , kTest_r , ...
-    kTest_r_ps , kTreat_r , kTreat_r_ps , partners , p_cond , acts)
+    kTest_r_ps , kTreat_r , kTreat_r_ps , partners , p_cond , acts , riskVec)
 %%
 sumall = @(x) sum(x(:));
 
@@ -378,4 +378,14 @@ for s = 1 : sites
 end
 
 dPop = dPop + dPop_Hiv;
+
+%% Births and Deaths
+dPop_bd = -kDie .* pop;
+for r = 1 : 3
+    dPop_bd(1 , 1 , 1 , r) = dPop_bd(1 , 1 , 1 , r) ...
+        + sum(kBorn .* pop(:)) .* riskVec(r);
+end
+dPop = dPop + dPop_bd;
+
+% convert dPop back to column vector for ODE solver
 dPop = dPop(:);

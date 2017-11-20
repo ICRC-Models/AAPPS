@@ -10,12 +10,17 @@ popInitial = zeros(hivStatus , stiTypes , sites , risk);
 popInitial(1 , 1 , 1 , 3) =  100469 - 5000; % N (low risk)
 popInitial(1 , 1 , 1 , 2) = 1000; % N (medium risk)
 popInitial(1 , 1 , 1 , 1) = 4000; % N (high risk)
-popInitial(2 , 1 , 1 , 3) = 424 * 0.5; % I (low risk)
-popInitial(2 , 2 , 2 : 4 , 1 : 2) = 424 * 0.5 / 6; % I (high and medium risk)
+popInitial(2 , 1 , 1 , 3) = 424 * 0.9; % I (low risk)
+popInitial(2 , 2 , 2 : 4 , 1 : 2) = 424 * 0.1 / 6; % I (high and medium risk)
 popInitial(3 , 1 , 1 , 3) = 390; % K
 popInitial(4 , 1 , 1 , 3) = 3972; % V
 popInitial(5 , 1 , 1 , 3) = 10526 + 27366; % P
 popInitial(: , 1 , 1 , :) = popInitial(: , 1 , 1 , :) + 1;
+
+riskVec = zeros(risk , 1);
+for r = 1 : risk
+    riskVec(r) = sum(sum(sum(popInitial(: , : , : , r)))) ./ sum(popInitial(:));
+end
 %%
 partners = c;
 sympref('HeavisideAtOrigin' , 1);
@@ -27,7 +32,7 @@ disp('Running...')
     kTreat_i , k_treatOut , kprep_u , kprep_u_ps , kTest_u , kTest_u_ps , ...
     kTreat_u , kTreat_u_ps , kTreat_k , kTreat_k_ps , kprep_p , kprep_p_ps , kTest_p , ...
     kTest_p_ps , kTreat_p , kTreat_p_ps , kprep_r , kprep_r_ps , kTest_r , ...
-    kTest_r_ps , kTreat_r , kTreat_r_ps , partners , p_cond , acts) , tspan , popInitial);
+    kTest_r_ps , kTreat_r , kTreat_r_ps , partners , p_cond , acts , riskVec) , tspan , popInitial);
 
 disp('Finished solving')
 
@@ -80,6 +85,3 @@ figure()
 plot(t , hivInf ./ totalPop * 100)
 title('HIV Infectious')
 xlabel('Year'); ylabel('Prevalence (%)')
-
-
-
