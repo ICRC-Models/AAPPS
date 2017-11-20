@@ -1,6 +1,14 @@
-function dPop = mixInfect(pop , perActInf , acts , partners)
+function dPop = mixInfect(t , pop , hivStatus , stiTypes , sites , ...
+    risk , kBorn , kDie , pSite , gcTreat , k_gcPS , gcClear , kInt , ...
+    perActInf , rTreat_v , k_toPrep, k_prepOut , kTest_i , ...
+    kTreat_i , k_treatOut , kprep_u , kprep_u_ps , kTest_u , kTest_u_ps , ...
+    kTreat_u , kTreat_u_ps , kTreat_k , kTreat_k_ps , kprep_p , kprep_p_ps , kTest_p , ...
+    kTest_p_ps , kTreat_p , kTreat_p_ps , kprep_r , kprep_r_ps , kTest_r , ...
+    kTest_r_ps , kTreat_r , kTreat_r_ps , partners , p_cond , acts)
 %%
 sumall = @(x) sum(x(:));
+
+pop = reshape(pop , [hivStatus , stiTypes , sites , risk]);
 
 % perActInf = [0 , 0.84 , 0; 0.243 , 0 , 0.0865 ; 0 , 0.62 , 0]; % [U , P , R]
 perAct_Anal = [0.84 , 0 , 0 ; 0 , 0.243  0 ; 0 , 0 , 0.62];
@@ -370,3 +378,4 @@ for s = 1 : sites
 end
 
 dPop = dPop + dPop_Hiv;
+dPop = dPop(:);
