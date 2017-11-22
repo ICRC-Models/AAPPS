@@ -8,8 +8,8 @@ stepsPerYear = 200;
 tspan = 2017 : 1 / stepsPerYear : 2050;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
 popInitial(1 , 1 , 1 , 3) =  100469 - 5000; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 1000; % N (medium risk)
-popInitial(1 , 1 , 1 , 1) = 4000; % N (high risk)
+popInitial(1 , 2 , 3 , 2) = 1000; % N (medium risk)
+popInitial(1 , 2 , 2 , 1) = 4000; % N (high risk)
 popInitial(2 , 1 , 1 , 3) = 424 * 0.9; % I (low risk)
 popInitial(2 , 2 , 2 : 4 , 1 : 2) = 424 * 0.1 / 6; % I (high and medium risk)
 popInitial(3 , 1 , 1 , 3) = 390; % K
@@ -74,14 +74,45 @@ totalPop = sum(sum(sum(sum(pop , 2) , 3) , 4) , 5);
 plot(t , totalPop)
 title('Population Size'); xlabel('Year'); ylabel('Persons')
 
-allGC = sum(sum(sum(pop(: , 1 : hivStatus , 2  , 1 : sites , 1 : 3) , 2) , 4) , 5);
+allGC = sum(sum(sum(pop(: , 1 : hivStatus , 2  , 2 : sites , 1 : 3) , 2) , 4) , 5);
 figure()
 plot(t , allGC ./ totalPop * 100)
 title('GC Positive Individuals')
 xlabel('Year'); ylabel('Prevalence (%)')
 
-hivInf = sum(sum(sum(pop(: , 2 , : , : , :) , 3) , 4) , 5);
+
+allGC_site = squeeze(bsxfun(@rdivide , ...
+    sum(sum(pop(: , 1 : hivStatus , 2  , 2 : sites , 1 : 3) , 2) , 5) , ...
+    totalPop)) * 100;
 figure()
-plot(t , hivInf ./ totalPop * 100)
-title('HIV Infectious')
+area(t , allGC_site)
+title('GC Prevalence Site')
 xlabel('Year'); ylabel('Prevalence (%)')
+legend('Rectal' , 'Urethral' , 'Pharyngeal')
+
+% HIV
+hivInf = sum(sum(sum(pop(: , 2 , : , : , :) , 3) , 4) , 5) ./ totalPop * 100;
+hivTreated = sum(sum(sum(pop(: , 4 , : , : , :) , 3) , 4) , 5) ./ totalPop * 100;
+hivTested = sum(sum(sum(pop(: , 3 , : , : , :) , 3) , 4) , 5) ./ totalPop * 100;
+prepImm = sum(sum(sum(pop(: , 5 , : , : , :) , 3) , 4) , 5) ./ totalPop * 100;
+
+figure()
+plot(t , hivInf , t , hivTreated , t , hivTested , t , prepImm)
+title('HIV Prevalence')
+legend('Infected' , 'Treated' , 'Tested' , 'PrEP/Immune')
+xlabel('Year'); ylabel('Prevalence (%)')
+
+% GC-HIV
+gc_hivInf = sum(sum(pop(: , 2 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 100;
+gc_hivTreated = sum(sum(pop(: , 4 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 100;
+gc_hivTested = sum(sum(pop(: , 3 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 100;
+gc_prepImm = sum(sum(pop(: , 5 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 100;
+
+figure()
+plot(t , gc_hivInf , t , gc_hivTreated , t , gc_hivTested , t , gc_prepImm)
+title('GC-HIV CoInfection')
+legend('GC + HIV Infected' , 'GC + HIV Treated' , 'GC + HIV Tested' ,...
+    'GC + Prep/Immune')
+xlabel('Year'); ylabel('Prevalence (%)')
+
+

@@ -70,10 +70,10 @@ end
 
 % Adjust partners to account for discrepancies in reporting
 % Balance according to serosorting report?
-% dim(partners) = [hiv state x infection site x act type]
-partners_hivImm = squeeze(sum(partners(5 , : , :) , 1)); % [infection site x act type]
-partners_hivPos = squeeze(sum(partners(3 : 4 , : , :) , 1)); % [infection site x act type]
-partners_hivNeg = squeeze(sum(partners(1 : 2 , : , :) , 1)); % [infection site x act type]
+% dim(partners) = [hiv state x risk x act type]
+partners_hivImm = squeeze(sum(partners(5 , : , :) , 1)); % [risk x act type]
+partners_hivPos = squeeze(sum(partners(3 : 4 , : , :) , 1)); % [risk x act type]
+partners_hivNeg = squeeze(sum(partners(1 : 2 , : , :) , 1)); % [risk x act type]
 
 partners_anal = [partners_hivNeg(: , 1) , partners_hivPos(: , 1) , partners_hivImm(: , 1)];
 partners_oral = [partners_hivNeg(: , 2) , partners_hivPos(: , 2) , partners_hivImm(: , 2)];
@@ -233,19 +233,19 @@ dPop = zeros(size(pop));
 
 
 %% Transitions to infection(s)
-for tTo = 1 : stiTypes
-    for sTo = 1 : sites
-        for r = 1 : risk
-            
-            % HIV-negative, STI positive
-            infected = lambda(1 , r , 2 , tTo , sTo) ...
-                .* pop(1 , 2 : stiTypes , 1 : sites , r);
-            dPop(1 , 2 : stiTypes , 1 : sites , r) = ...
-                dPop(1 , 2 : stiTypes , 1 : sites , r) - infected;
-            dPop(2 , 2 : stiTypes , 1 : sites , r) = ...
-                dPop(2 , 2 : stiTypes , 1 : sites , r) + infected;
-            
-            % STI-negative, HIV-positive / HIV-immune
+
+for sTo = 1 : sites
+    for r = 1 : risk 
+        % HIV-negative, STI positive
+        infected = lambda(1 , r , 2 , 1 , sTo) ...
+            .* pop(1 , 2 : stiTypes , 1 : sites , r);
+        dPop(1 , 2 : stiTypes , 1 : sites , r) = ...
+            dPop(1 , 2 : stiTypes , 1 : sites , r) - infected;
+        dPop(2 , 2 : stiTypes , 1 : sites , r) = ...
+            dPop(2 , 2 : stiTypes , 1 : sites , r) + infected;
+        
+        for tTo = 1 : stiTypes
+            %STI-negative, HIV-positive / HIV-immune
             for h = 2 : hivStatus
                 hivStat = 2;
                 if h > 3
@@ -259,7 +259,7 @@ for tTo = 1 : stiTypes
                     dPop(h , tTo , sTo , r) + infected;
             end
             
-            % All-negative
+            %All-negative
             for i = 1 : 3
                 hTo = 1;
                 if i > 1
@@ -290,7 +290,6 @@ end
 %     lambda_u , 0 , 0 , 0 ; ...
 %     lambda_p , 0 , 0 , 0; ...
 %     lambda_r , 0 , 0 , 0];
-
 % recovery
 gcTransMat_rec = [0 , gcClear(1), gcClear(2) , gcClear(3) ; ...
     0 , -gcClear(1) , 0 , 0 ; ...
@@ -340,7 +339,7 @@ gcHivTransMat(: , : , 1) = ...
     [-(k_toPrep) , 0 , 0 , 0 , k_prepOut;
     0 , -(kTest_i + kTreat_i) , 0 , 0 , 0;
     0 , kTest_i , -kTreat_k , k_treatOut , 0;
-    0 , kTreat_i , kTreat_k , k_treatOut , 0;
+    0 , kTreat_i , kTreat_k , -k_treatOut , 0;
     k_toPrep , 0 , 0 , 0 , -k_prepOut];
 
 % GC-Urethral HIV transition matrix
@@ -356,7 +355,7 @@ gcHivTransMat(: , : , 3) = ...
     [-(kprep_p + kprep_p_ps) , 0 , 0 , 0 , k_prepOut;
     0 , -(kTest_p + kTest_p_ps + kTreat_p + kTreat_p_ps) , 0 , 0 , 0;
     0 , kTest_p + kTest_p_ps , -(kTreat_p + kTreat_p_ps) , rTreat_v , 0;
-    0 , kTreat_p + kTreat_p_ps , 0 , - rTreat_v , 0;
+    0 , kTreat_p + kTreat_p_ps , kTreat_p + kTreat_p_ps , - rTreat_v , 0;
     kprep_p + kprep_p_ps , 0 , 0 , 0 , -k_prepOut];
 
 % GC-Rectal HIV transition matrix
@@ -364,7 +363,7 @@ gcHivTransMat(: , : , 4) = ...
     [-(kprep_r + kprep_r_ps) , 0 , 0 , 0 , k_prepOut;
     0 , -(kTest_r + kTest_r_ps + kTreat_r + kTreat_r_ps) , 0 , 0 , 0;
     0 , kTest_r + kTest_r_ps , -(kTreat_r + kTreat_r_ps) , rTreat_v , 0;
-    0 , kTreat_r + kTreat_r_ps , 0 , -rTreat_v , 0;
+    0 , kTreat_r + kTreat_r_ps , kTreat_r + kTreat_r_ps , -rTreat_v , 0;
     kprep_r + kprep_r_ps , 0 , 0 , 0 , -k_prepOut];
 
 dPop_Hiv = zeros(size(pop));

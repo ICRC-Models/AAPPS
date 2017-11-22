@@ -14,9 +14,9 @@ save('genParams');
 % pharyngeal)
 file = 'GC_HIV_ModelParameters.xlsx';
 pSite = xlsread(file , 'Rates' , 'B4:F6');
-gcTreat = xlsread(file , 'Rates' , 'B9:F11');
+gcTreat = xlsread(file , 'Rates' , 'B9:B11');
 k_gcPS = xlsread(file , 'Rates' , 'B14:F16');
-gcClear = xlsread(file , 'Rates' , 'B19:F21');
+gcClear = xlsread(file , 'Rates' , 'B19:B21');
 kInt = xlsread(file , 'Rates' , 'B24:F26');
 perActInf = xlsread(file , 'Rates' , 'C36 : C38');
 save('gcParams')
