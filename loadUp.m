@@ -1,7 +1,7 @@
 function loadUp()
 hivStatus = 5; % (1) negative , (2) infectious , (3) tested , (4) treated...
 % (5) on PreP, HIV immune
-stiTypes = 4; % (1) none (2) gonorrhea, (3) chlamydia, (4) syphilis
+stiTypes = 2; % (1) none (2) gonorrhea, (3) chlamydia, (4) syphilis
 sites = 4; % (1) none (2) rectal, (3) urethral, (4) pharyngeal
 risk = 3;
 file = 'GC_HIV_ModelParameters.xlsx';
@@ -16,7 +16,7 @@ file = 'GC_HIV_ModelParameters.xlsx';
 pSite = xlsread(file , 'Rates' , 'B4:F6');
 gcTreat = xlsread(file , 'Rates' , 'B9:B11');
 k_gcPS = xlsread(file , 'Rates' , 'B14:F16');
-gcClear = xlsread(file , 'Rates' , 'B19:B21');
+gcClear = xlsread(file , 'Rates' , 'B24:B26');
 kInt = xlsread(file , 'Rates' , 'B24:F26');
 perActInf = xlsread(file , 'Rates' , 'C36 : C38');
 save('gcParams')
