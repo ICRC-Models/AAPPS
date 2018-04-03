@@ -1,78 +1,118 @@
 function dPop = mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-    risk , kBorn , kDie , pSite , gcTreat , k_gcPS , gcClear , kInt , ...
-    perActInf , rTreat_v , k_toPrep, k_prepOut , kTest_i , ...
-    kTreat_i , k_treatOut , kprep_u , kprep_u_ps , kTest_u , kTest_u_ps , ...
-    kTreat_u , kTreat_u_ps , kTreat_k , kTreat_k_ps , kprep_p , kprep_p_ps , kTest_p , ...
-    kTest_p_ps , kTreat_p , kTreat_p_ps , kprep_r , kprep_r_ps , kTest_r , ...
-    kTest_r_ps , kTreat_r , kTreat_r_ps , partners , p_cond , acts , riskVec , ...
-    condUse , tVec)
+    risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+    p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
+    kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
+    condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec)
 %%
 sumall = @(x) sum(x(:));
+pop(5 , : , : , :) = 0;
+%% Scale-up treatments
+% kTest_p_ps = interp1(tVec , kTest_p_ps , t);
+% kTreat_p_ps = interp1(tVec , kTreat_p_ps , t);
+% kTest_u_ps = interp1(tVec , kTest_u_ps , t);
+% kTreat_u_ps = interp1(tVec , kTreat_u_ps , t);
+% kTest_r_ps = interp1(tVec , kTest_r_ps , t);
+% kTreat_r_ps = interp1(tVec , kTreat_r_ps , t);
+% k_gcPS(1 : 3) = psProp .* interp1(tVec , k_gcPS , t); % partner services treatment rate (proportion of GC treated by PS) scale-up
 
-%% Scale-up vectors
-kTest_p_ps = interp1(tVec , kTest_p_ps , t);
-kTreat_p_ps = interp1(tVec , kTreat_p_ps , t);
-kTest_u_ps = interp1(tVec , kTest_u_ps , t);
-kTreat_u_ps = interp1(tVec , kTreat_u_ps , t);
-kTest_r_ps = interp1(tVec , kTest_r_ps , t);
-kTreat_r_ps = interp1(tVec , kTreat_r_ps , t);
-k_gcPS(1 : 3) = interp1(tVec , k_gcPS , t);
-
+fScale = interp1(tVec , fScale , t);
+psTreatMat = fScale .* d_psTreatMat;
+routineTreatMat = fScale .* d_routineTreatMat + routineTreatMat_init;
+fScale_HivScreen = interp1(tVec , fScale_HivScreen , t);
+kHivScreen = fScale_HivScreen .* d_kHivScreen + kHivScreen_init;
+hScale = interp1(tVec , hScale , t);
+hAssort = hScale .* d_hAssort + hAssort_init;
 %%
 pop = reshape(pop , [hivStatus , stiTypes , sites , risk]);
 
 % perActInf = [0 , 0.84 , 0; 0.243 , 0 , 0.0865 ; 0 , 0.62 , 0];
-perAct_Anal = [0 , 0.84 , 0 ; 0.243 , 0  0.0865 ; 0 , 0.62 , 0];
-perAct_Oral = [0 , 0 , 0 ; 0 , 0.62 , 0.62 ; 0 , 0.62 , 0.62];
-perActHiv = 0.82 * 10 ^ -2;
+% GC transmission probabilties by site and mode of transmission
+% 'x' indicates that transmission does not occur by this route
 
-acts = acts / 2; % half anal, half oral for testing
+perAct_Anal = [0 , 0.84 , 0 ;... % rectal -> (x, urethral , pharyngeal)
+    0.243 , 0  0.0865 ; ... % urethral -> (rectal , x , pharyngeal)
+    0 , 0.62 , 0]; % pharyngeal -> (x , urethral , x)
 
-perPartner_Anal = min(1 - (1 - perAct_Anal) .^ acts , 0.99); % GC anal transmission probability
-perPartner_Oral = min(1 - (1 - perAct_Oral) .^ acts , 0.99); % GC oral transmission probability
-perPartnerHiv = min(1 - (1 - perActHiv) .^ acts , 0.99);
+perAct_Oral = [0 , 0 , 0 ; ... % rectal -> (x , x , x)
+    0 , 0.62 , 0.62 ;... % urethral -> (x , urethral , pharyngeal)
+    0 , 0.62 , 0.62]; % pharyngeal -> (x , urethral , pharyngeal)
 
+perActHiv = 0.82 * 10 ^ -2; % anal transmission
+
+acts = acts; % half anal, half oral for testing
+
+% transmission probabilities assume independence of potential transmission events
+perPartner_Anal = min(1 - (1 - perAct_Anal) .^ acts , 0.99999); % GC anal transmission probability
+perPartner_Oral = min(1 - (1 - perAct_Oral) .^ acts , 0.99999); % GC oral transmission probability
+perPartnerHiv = 1 - (1 - perActHiv) .^ acts; % HIV transmission probability
+
+% assortativity matrices by HIV status and risk
 hAssortMat = eye(3);% (1) HIV-/unknown status, (2) HIV+/Tested, (3) PrEP
-rAssortMat = eye(risk);
+rAssortMat = eye(risk); % (1) High, (2) Medium, (3) Low
 
-hAssort = 0.8;%0.8; % extent of HIV serosorting
-rAssort = 0.5;%0.5; % assorting by risk
-
-mixMatHiv = zeros(3 , 3); % positive, negative, PrEP
-mixMatRisk = zeros(3 , risk , risk);
+% probability of individuals in HIV state h mixing with individuals in HIV state hh
+mixMatHiv = zeros(3 , 3);
+% probability of individuals in HIV state h and risk group r mixing with individuals in risk group rr
+mixMatRisk = zeros(3 , risk , risk); 
+% probability of individuals in HIV state h and risk group r mixing with individuals in HIV state hh and risk group rr
 mixMat = zeros(3 , 3 , risk , risk);
 
-byHiv = squeeze(sum(sum(pop , 2) , 3)); % sum across sti types and sites
-hivNeg = sum(sum(byHiv(1 : 2 , :))); % negative, infectious (own status unknown)
-hivPos = sum(sum(byHiv(3 : 4 , :))); % tested, treated
-hivImm = sum(sum(byHiv(5 , :))); %PrEP/HIV Immune
+byHiv = squeeze(sum(sum(pop , 2) , 3)); % sum across sti types and sites --> dimensions: [hivStatus(5) x risk(3)]
+% for mixing purposes, HIV-negatives and HIV-infectious who do not know
+% their own status are combined into one group
+hivNeg = sum(sum(byHiv(1 : 2 , :))); % negative, infectious (own status unknown) --> [1 x risk(3)]
+hivPos = sum(sum(byHiv(3 : 4 , :))); % tested, treated (HIV-positive with known status) --> [1 x risk(3)]
+hivImm = sum(byHiv(5 , :)); %PrEP/HIV Immune --> [1 x risk(3)]
 total = sumall(byHiv); % total population
 
 % Mixing matrix by HIV status
-mixMatHiv(: , 3) = hivImm / total .* (1 - hAssort); % random mixing with PrEP
-mixMatHiv(: , 2) = hivPos / total .* (1 - hAssort); % random mixing with HIV positive
-mixMatHiv(: , 1) = hivNeg / total .* (1 - hAssort); % random mixing with HIV-/status unknown
+% random mixing component
+mixMatHiv(: , 3) = hivImm / total .* (1 - hAssort); % proportion of partnerships from random mixing with PrEP
+mixMatHiv(: , 2) = hivPos / total .* (1 - hAssort); % proportion of partnerships from random mixing with HIV positive
+mixMatHiv(: , 1) = hivNeg / total .* (1 - hAssort); % proportion of partnerships from random mixing with HIV-/status unknown
+
+% HIV status mixing matrix resulting from combination of assortative and random mixing
+% by HIV status
 mixMatHiv = mixMatHiv + hAssort .* hAssortMat; % random + assortative mixing by HIV status
 
-%
+%  
 byHiv_Risk = squeeze(sum(sum(pop , 2) , 3)); % [hivStatus x sites]
-hivNeg_Risk = sum(byHiv_Risk(1 : 2 , :) , 1) ./ hivNeg; % [1(HIV-susceptible) x sites] -> [1 x sites]
-hivPos_Risk = sum(byHiv_Risk(3 : 4 , :) , 1) ./ hivPos; % sum[(HIV-positive states) 2 x sites] -> [1 x sites]
-hivImm_Risk = sum(byHiv_Risk(5 , :) , 1) ./ hivImm; % sum[(HIV-immune) 1 x sites] -> [1 x sites]
 
-% Mixing matrix by risk group
+% Risk distribution by HIV status
+hivNeg_Risk = zeros(1 , risk); 
+hivPos_Risk = zeros(1 , risk); 
+hivImm_Risk = zeros(1 , risk); 
+
+if hivNeg > 0
+    hivNeg_Risk = sum(byHiv_Risk(1 : 2 , :) , 1) ./ hivNeg; % proportion of negatives (1) and infectious (2) in each risk group 
+end
+
+if hivPos > 0
+    hivPos_Risk = sum(byHiv_Risk(3 : 4 , :) , 1) ./ hivPos; % proportion of tested (3) and treated (4) in each risk group
+end
+
+if hivImm > 0
+    hivImm_Risk = sum(byHiv_Risk(5 , :) , 1) ./ hivImm; % proportion of PrEP takers (5) in each risk group
+end
+
+% Mixing matrix by risk group for individuals in each HIV group
+% For random mixing, the proportion of partners from risk group "r" is
+% equal to the proportion of people in the population belonging to risk
+% group "r"
 for r = 1 : risk
-    mixMatRisk(1 , : , r) = hivNeg_Risk(r) .* (1 - rAssort); % pure random mixing by risk group for HIV negative
-    mixMatRisk(2 , : , r) = hivPos_Risk(r) .* (1 - rAssort); % pure random mixing by risk group for HIV positive
-    mixMatRisk(3 , : , r) = hivImm_Risk(r) .* (1 - rAssort); % pure random mixing by risk group for HIV immune
+    mixMatRisk(1 , : , r) = hivNeg_Risk(r) .* (1 - rAssort); % proportion of contacts from random mixing by risk group with HIV negative and HIV infectious
+    mixMatRisk(2 , : , r) = hivPos_Risk(r) .* (1 - rAssort); % proportion of contacts from random mixing by risk group with HIV positive
+    mixMatRisk(3 , : , r) = hivImm_Risk(r) .* (1 - rAssort); % proportion of contacts from random mixing by risk group with HIV immune
 end
 
 for h = 1 : 3
-    mixMatRisk(h , : , :) = squeeze(mixMatRisk(h , : , :)) + rAssort .* rAssortMat; % assortative mixing by risk
+    mixMatRisk(h , : , :) = squeeze(mixMatRisk(h , : , :)) + rAssort .* rAssortMat; % adding assortative mixing by risk
 end
 
-% Mixing matrix by HIV status and risk group (using infection site as
-% proxy)
+% Mixing matrix by HIV status and risk group
+% mixMat(h , hh , rr , r)
+% probability of a person from HIV group h and risk group r mixing with a
+% person from HIV group hh and risk group rr
 for h = 1 : 3
     for hh = 1 : 3
         mixMat(h , hh , : , :) = mixMatHiv(h , hh) .* mixMatRisk(hh , : , :);
@@ -80,7 +120,8 @@ for h = 1 : 3
 end
 
 % Adjust partners to account for discrepancies in reporting
-% Balance according to serosorting report?
+% Ensures number of partners that group a has coming from group b is equal 
+% to the number of partners group b has coming from group a
 % dim(partners) = [hiv state x risk x act type]
 partners_hivImm = squeeze(mean(partners(5 , : , :) , 1)); % [risk x act type]
 partners_hivPos = squeeze(mean(partners(3 : 4 , : , :) , 1)); % [risk x act type]
@@ -106,13 +147,17 @@ for r = 1 : risk
                 if fracPop(hh , rr) > 10 ^ -6
                     frac = fracPop(h , r) / fracPop(hh , rr);
                 end
-                if(sum(partners_anal(rr , hh)) * mixMat(hh , h , rr , r)) > 10 ^ -6
-                    adjustFac_anal(h , hh , r , rr) = ...
-                        sum(partners_anal(r , h) * mixMat(h , hh , r ,rr)) ...
-                        / (sum(partners_anal(rr , hh)) * mixMat(hh , h , rr , r)) * frac;
-                    adjustFac_oral(h , hh , r , rr) = ...
-                        sum(partners_oral(r , h) * mixMat(h , hh , r ,rr)) ...
-                        / (sum(partners_oral(rr , hh)) * mixMat(hh , h , rr , r)) * frac;
+                if sum(partners_anal(rr , hh) * mixMat(hh , h , r , rr)) > 10 ^ -6
+                    if sum(partners_anal(r , h) * mixMat(h , hh , rr , r)) > 10 ^ -6
+                        adjustFac_anal(h , hh , rr , r) = ...
+                            sum(partners_anal(r , h) * mixMat(h , hh , rr , r)) ...
+                            / sum(partners_anal(rr , hh) * mixMat(hh , h , r , rr)) * frac;
+                    end
+                    if sum(partners_oral(r , h) * mixMat(h , hh , rr , r)) > 10 ^ -6
+                        adjustFac_oral(h , hh , rr , r) = ...
+                            sum(partners_oral(r , h) * mixMat(h , hh , rr , r)) ...
+                            / sum(partners_oral(rr , hh) * mixMat(hh , h , r , rr)) * frac;
+                    end
                 end
             end
         end
@@ -128,20 +173,20 @@ for r = 1 : risk
         for h = 1 : hivNegPosImm
             for hh = 1 : hivNegPosImm
                 % Adjust anal partners
-                if adjustFac_anal(h , hh , r , rr) ~= 0
-                    analPartnersAdj(h , hh , r , rr) = partners_anal(r , h) ...
-                        * adjustFac_anal(h , hh , r , rr) .^ -(1 - theta);
+                if adjustFac_anal(h , hh , rr , r) ~= 0
+                    analPartnersAdj(h , hh , rr , r) = partners_anal(r , h) ...
+                        * adjustFac_anal(h , hh , rr , r) .^ -(1 - theta);
                
-                    analPartnersAdj(hh , h , rr , r) = partners_anal(rr , hh) ...
-                        * adjustFac_anal(h , hh , r , rr) .^ theta;
+                    analPartnersAdj(hh , h , r , rr) = partners_anal(rr , hh) ...
+                        * adjustFac_anal(h , hh , rr , r) .^ theta;
                 end
                 % Adjust oral partners
-                if adjustFac_oral(h , hh , r , rr) ~= 0
-                    oralPartnersAdj(h , hh , r , rr) = partners_oral(r , h) ...
-                        * adjustFac_oral(h , hh , r , rr) .^ -(1 - theta);
+                if adjustFac_oral(h , hh , rr , r) ~= 0
+                    oralPartnersAdj(h , hh , rr , r) = partners_oral(r , h) ...
+                        * adjustFac_oral(h , hh , rr , r) .^ -(1 - theta);
 
-                    oralPartnersAdj(hh , h , rr , r) = partners_oral(rr , hh) ...
-                        * adjustFac_oral(h , hh , r , rr) .^ theta;
+                    oralPartnersAdj(hh , h , r , rr) = partners_oral(rr , hh) ...
+                        * adjustFac_oral(h , hh , rr , r) .^ theta;
                 end
             end
         end
@@ -154,7 +199,7 @@ end
 % per year inf calculated as -log(1-per_Partner_per_Year_Transmission)
 perYear_AnalInf = zeros(hivNegPosImm , stiTypes , 3 , risk , sites , sites);
 perYear_OralInf = perYear_AnalInf;
-popSubs = [hivNeg ; hivPos ; hivImm]; % pop subtotals by hiv status. hivNeg includes HIV+ who think they are negative
+popSubs = [sum(byHiv(1 : 2 , :)) ; sum(byHiv(3 : 4 , :)) ; byHiv(5 , :)]; % pop subtotals by hiv status. hivNeg includes HIV+ who think they are negative
 hivNegPop = sum(pop(1 : 2 , : , : , :) , 1);
 hivPosActual = sum(pop(2 , : , : , :) , 1);
 hivPosPop = sum(pop(3 : 4 , : , : , :) , 1);
@@ -172,9 +217,9 @@ for h = 1 : hivNegPosImm
         for r = 1 : risk
             for s = 1 : sites
                 for ss = 1 : sites
-                    popSubtotal = popSubs(h);
+                    popSubtotal = popSubs(h , r);
                     popGroup = squeeze(pops{h});
-                    if popSubtotal > 10 ^ -6 
+                    if popSubtotal > 0
                         % if h ~= 1 (not hiv negative group) 
                         contactProb = 0;
                         if popGroup(ty , s , r) > 10 ^ -6
@@ -182,7 +227,7 @@ for h = 1 : hivNegPosImm
                         end
                         contactProbHiv = 0; % for HIV positive or HIV-immune group (HIV status known)
                         % per partner transmission probabilities
-                        joint = perPartner_Anal(ss , s) * perPartnerHiv; % sti and hiv
+                        joint = perPartner_Anal(s , ss) * perPartnerHiv; % sti and hiv
                         p_hiv = perPartnerHiv; % hiv
                                                      
                         if h == 1 && hivPosActual(1 , ty , s , r) > 10 ^ -6
@@ -191,10 +236,10 @@ for h = 1 : hivNegPosImm
                         
                         % ADD protection from condoms here
                         perYear_AnalInf(h , ty , 1 , r , s , ss) = ... % probability of getting STI
-                            - log(1 - (ty > 1) * (perPartner_Anal(ss , s) - joint)) ... % evaluate probability of getting STI for STI indices, i.e. if t > 1
+                            - log(1 - (ty > 1) * perPartner_Anal(s , ss)) ... % evaluate probability of getting STI for STI indices, i.e. if t > 1
                             .* (1 - condUse(r)) .* contactProb;
                         
-                        if h < 3 % getting HIV from non-immune
+                        if h <= 3 % getting HIV from infectious or tested
                             perYear_AnalInf(h , ty , 2 , r , s , ss) = ... % probability of getting HIV
                                 - log(1 - (p_hiv - joint * (ty > 1))) ...                        
                                 .* (1 - condUse(r)) .* contactProbHiv;  % ADD protection from condoms here
@@ -206,7 +251,7 @@ for h = 1 : hivNegPosImm
                         
                         % oral (non-HIV STIs)
                         perYear_OralInf(h , ty , 1 , r , s , ss) = ...
-                            - log(1 - (perPartner_Oral(ss , s)) * (ty > 1)) ...
+                            - log(1 - (perPartner_Oral(s , ss)) * (ty > 1)) ...
                             .* contactProb;
                     end
                 end
@@ -238,13 +283,13 @@ for hivStat = 1 : hivNegPosImm
                         for s = 1 : sites
                             for ss = 1 : sites
                                 lambda_Anal(hivStat , r , i , ty , s) = lambda_Anal(hivStat , r , i , ty , s) ... 
-                                    + analPartnersAdj(hivStat , hivStatPartner , r , rr) ...
-                                    * mixMat(hivStat , hivStatPartner , r , rr)...
+                                    + analPartnersAdj(hivStat , hivStatPartner , rr , r) ...
+                                    * mixMat(hivStat , hivStatPartner , rr , r)...
                                     * perYear_AnalInf(hivStatPartner , ty , i , rr , s , ss);
                                 
                                 lambda_Oral(hivStat , r , i , ty , s) = lambda_Oral(hivStat , r , i , ty , s) ...
-                                    + oralPartnersAdj(hivStat , hivStatPartner , r , rr) ...
-                                    * mixMat(hivStat , hivStatPartner , r , rr)...
+                                    + oralPartnersAdj(hivStat , hivStatPartner , rr , r) ...
+                                    * mixMat(hivStat , hivStatPartner , rr , r)...
                                     * perYear_OralInf(hivStatPartner , ty , i , rr , s , ss);
                             end
                         end
@@ -258,6 +303,9 @@ lambda = lambda_Anal + lambda_Oral;
 % lambda(2 : 3 , : , 2 : 3 , : , :) = 0; % HIV-positive/immune cannot be reinfected   
 % dims: (hivNegPosImm (3) , risk , infs (Other STI, HIV , HIV + Other STI) , stiTypes , sites)
 % lambda = min(lambda , 0.999);
+if any(imag(lambda(:)))
+    disp('stop')
+end
 %% Calculate derivatives
 dPop = zeros(size(pop));
 %% Transitions to infection(s)
@@ -276,7 +324,7 @@ for sTo = 1 : sites
             %STI-negative, HIV-positive / HIV-immune
             for h = 2 : hivStatus
                 hivStat = 2;
-                if h > 3
+                if h >= 3
                     hivStat = 3;
                 end
                 infected = lambda(hivStat , r , 1 , tTo , sTo) ...
@@ -288,7 +336,7 @@ for sTo = 1 : sites
             end
         end
         
-        for tTo = 1 : stiTypes
+        for tTo = 2 : stiTypes
             %  All-negative
             for i = 1 : 3
                 hTo = 1;
@@ -306,121 +354,103 @@ for sTo = 1 : sites
     end
 end
 
-
-
 %% GC transitions
-% dimensions: [S, U, P, R] x [S, U, P, R]
+% % dimensions: [N, I, K, V] x [R, U, P]
 
 % GC transition matrix
-% Infection
-% gcTransMat_Inf = [-(lambda_u + lambda_p + lambda_r) , ...
-%     0 , 0 , 0 ; ...
-%     lambda_u , 0 , 0 , 0 ; ...
-%     lambda_p , 0 , 0 , 0; ...
-%     lambda_r , 0 , 0 , 0];
+% natural recovery
+gcTransMat_rec = gcClear(: , 1 : 4); % use [N, I, K, V] x [R, U, P] dimensions
 
-% recovery
-gcTransMat_rec = [0 , gcClear(1), gcClear(2) , gcClear(3) ; ...
-    0 , -gcClear(1) , 0 , 0 ; ...
-    0 , 0 , -gcClear(2) , 0; ...
-    0 , 0 , 0 , -gcClear(3)];
+% Treatment
+% Uses proportion of all GC-infected by site that are treated by any 
+% program/route and proportion treated by specific programs/routes to find
+% proportion of all GC-infected by site that are treated by a specific 
+% program/route
 
-% treatment
-gcTransMat_trt = [0 , gcTreat(1) , gcTreat(2) , gcTreat(3); ...
-    0 , -gcTreat(1) , 0 , 0 ; ...
-    0 , 0 , -gcTreat(2) 0; ...
-    0 , 0 , 0 , -gcTreat(3)];
+% symptomatic
+sympTreatMat = p_symp .* kDiagTreat;
 
-% partner services
-gcTransMat_ps = [0 , k_gcPS(1) , k_gcPS(2) , k_gcPS(3); ...
-    0 , -k_gcPS(1) , 0 , 0 ; ...
-    0 , 0 , -k_gcPS(2) , 0; ...
-    0 , 0 , 0 , -k_gcPS(3)];
+% preallocate matrices
+gc_n_rec = zeros(size(pop));
+gc_routTreat = zeros(size(pop));
+gc_sympTreat = zeros(size(pop));
+gc_psTreat = zeros(size(pop));
+gc_n_routTreat = gc_routTreat;
+gc_n_sympTreat = gc_sympTreat;
+gc_n_psTreat = gc_psTreat;
 
-
-dPop_gc_rec = zeros(size(pop));
-dPop_gc_trt = zeros(size(pop));
-dPop_gc_ps = zeros(size(pop));
-for h = 1 : hivStatus
-    for r = 1 : risk
-        dPop_gc_rec(h , 2 , : , r) = dPop_gc_rec(h , 2 , : , r) ...
-            + reshape(gcTransMat_rec * squeeze(pop(h , 2 , : , r)) , [1 1 4]);
-        dPop_gc_trt(h , 2 , : , r) = dPop_gc_trt(h , 2 , : , r) ...
-            + reshape(gcTransMat_trt * squeeze(pop(h , 2 , : , r)) , [1 1 4]);
-        dPop_gc_ps(h , 2 , : , r) = dPop_gc_ps(h , 2 , : , r) ...
-            + reshape(gcTransMat_ps * squeeze(pop(h , 2 , : , r)) , [1 1 4]);
-    end
+% change in GC infected by site of infection and HIV status
+for r = 1 : risk
+    %HIV-negative
+    gc_n_rec(1 : 4 , 2 , 2 : 4 , r) = ... % natural clearance of GC
+        (gcTransMat_rec .* squeeze(pop(1 : 4 , 2 , 2 : 4 , r))')';
+    gc_n_routTreat(1 , 2 , 2 : 4 , r) =  ... % GC treatment through routine screening
+        routineTreatMat(: , 1) .* squeeze(pop(1 , 2 , 2 : 4 , r));
+    gc_n_sympTreat(1 , 2 , 2 : 4 , r) =... % GC treatment of symptomatics
+        sympTreatMat(: , 1) .* squeeze(pop(1 , 2 , 2 : 4 , r));
+    gc_n_psTreat(1 , 2 , 2 : 4 , r) =... % GC treatment through partner services
+        psTreatMat(: , 1) .* squeeze(pop(1 , 2 , 2 : 4 , r));
+    
+    % HIV-positive
+    gc_routTreat(2 , 2 , 2 : 4 , r) =  ... % GC treatment and HIV testing through routine screening
+        routineTreatMat(: , 2) .* squeeze(pop(2 , 2 , 2 : 4 , r));
+    gc_sympTreat(2 , 2 , 2 : 4 , r) =... % GC treatment and HIV testing of symptomatics
+        sympTreatMat(: , 2) .* squeeze(pop(2 , 2 , 2 : 4 , r));
+    gc_psTreat(2 , 2 , 2 : 4 , r) =... % GC treatment and HIV testing through partner services
+        psTreatMat(: , 2) .* squeeze(pop(2 , 2 , 2 : 4 , r));
+    
 end
 
-dPop = dPop + dPop_gc_rec + dPop_gc_trt + dPop_gc_ps;
-dPop(: , 1 , 1 , :) = dPop(: , 1 , 1 , :) + dPop(: , 2 , 1 , :); % put GC recovered back into susceptible pool
-dPop(: , 2 , 1 , :) = 0;
-% HIV state transition matrix
-% 
-% Matrices for HIV-state transitions for GC-Susceptible, GC-Urethral, ...
-% GC-Pharyngeal , GC-Recovered.
-% Dimensions: [5 x 5] , [N , I , K , V , P] x [N , I , K , V , P]
-% N - negative(1), I - infectious(2) , K - tested(3) , V - HIV Treated & Virally Suppressed(4) , ...
-% P - On PrEP, HIV immune(5)
-% 
-% GC-Susceptible HIV transition matrix
-gcHivTransMat(: , : , 1) = ...
-    [-(k_toPrep) , 0 , 0 , 0 , k_prepOut;
-    0 , -(kTest_i) , 0 , 0 , 0;
-    0 , kTest_i , -kTreat_k , k_treatOut , 0;
-    0 , 0 , kTreat_k , -k_treatOut , 0;
-    k_toPrep , 0 , 0 , 0 , -k_prepOut];
-% 
-% GC-Rectal HIV transition matrix
-gcHivTransMat(: , : , 2) = ...
-    [-(kprep_r + kprep_r_ps) , 0 , 0 , 0 , k_prepOut;
-    0 , -(kTest_r + kTest_r_ps) , 0 , 0 , 0;
-    0 , kTest_r + kTest_r_ps , -(kTreat_r + kTreat_r_ps) , rTreat_v , 0;
-    0 , 0 , kTreat_r + kTreat_r_ps , -rTreat_v , 0;
-    kprep_r + kprep_r_ps , 0 , 0 , 0 , -k_prepOut];
+% Natural clearance
+dPop(1 : 4 , 2 , 2 : 4 , :) = dPop(1 : 4 , 2 , 2 : 4 , :) ...
+    - gc_n_rec(1 : 4 , 2 , 2 : 4 , :);
+dPop(1 : 4 , 1 , 1 , :) = dPop(1 : 4 , 1 , 1 , :)...
+    + sum(gc_n_rec(1 : 4 , 2 , 2 : 4 , :) , 3);
 
+% HIV transitions
+% HIV negative and GC positive -> HIV negative and GC negative
+dPop = dPop - gc_n_routTreat - gc_n_sympTreat - gc_n_psTreat; % HIV negative and GC positive ->
+dPop(1 , 1 , 1 , :) = dPop(1 , 1 , 1 , :) + ... % -> HIV negative and GC negative
+    + sum(gc_n_routTreat(1 , 2 , 2 : 4 , :) , 3) ...
+    + sum(gc_n_sympTreat(1 , 2 , 2 : 4 , :) , 3)...
+    + sum(gc_n_psTreat(1 , 2 , 2 : 4 , :) , 3);
+
+% HIV infectious and GC positive -> HIV tested and GC negative
+dPop = dPop - gc_routTreat - gc_sympTreat - gc_psTreat;% HIV infectious and GC positive ->
+dPop(3 , 1 , 1 , :) = dPop(3 , 1 , 1 , :) ... % -> HIV tested and GC negative
+    + sum(gc_routTreat(2 , 2 , 2 : 4 , :) , 3)...
+    + sum(gc_sympTreat(2 , 2 , 2 : 4 , :) , 3) + ...
+    + sum(gc_psTreat(2 , 2 , 2 : 4 , :) , 3);
+
+%% HIV 
+% Screening (Partner Services and Routine)
+psScreen(2 , 1 , 1 , :) =... %HIV testing through partner services
+    mean(psTreatMat(: , 2)) .* pop(2 , 1 , 1 , :);
+
+routScreen(2 , 1 , 1 , :) =  ... % HIV testing through routine screening
+    kHivScreen .* pop(2 , 1 , 1 , :);
+
+% infectious -> screened
+dPop(2 , 1 , 1 , :) = dPop(2 , 1 , 1 , :) - psScreen(2 , 1 , 1 , :) - routScreen(2 , 1 , 1 ,:); % infectious -> 
+dPop(3 , 1 , 1 , :) = dPop(3 , 1 , 1 , :) + psScreen (2 , 1 , 1 , :) + routScreen(2 , 1 , 1 , :); % -> screened
+
+% Treatment
+% Screened -> treated
 % 
-% GC-Urethral HIV transition matrix
-gcHivTransMat(: , : , 3) = ...
-    [-(kprep_u + kprep_u_ps) , 0 , 0 , 0 , k_prepOut;
-    0 , -(kTest_u + kTest_u_ps) , 0 , 0 , 0;
-    0 , kTest_u + kTest_u_ps , -(kTreat_u + kTreat_u_ps) , rTreat_v , 0;
-    0 , 0 , kTreat_u + kTreat_u_ps , -rTreat_v , 0;
-    kprep_u + kprep_u_ps , 0 ,0 , 0 , -k_prepOut];
-% 
-% GC-Pharyngeal HIV transition matrix
-gcHivTransMat(: , : , 4) = ...
-    [-(kprep_p + kprep_p_ps) , 0 , 0 , 0 , k_prepOut;
-    0 , -(kTest_p + kTest_p_ps) , 0 , 0 , 0;
-    0 , kTest_p + kTest_p_ps , -(kTreat_p + kTreat_p_ps) , rTreat_v , 0;
-    0 , 0 , kTreat_p + kTreat_p_ps , - rTreat_v , 0;
-    kprep_p + kprep_p_ps , 0 , 0 , 0 , -k_prepOut];
-
-
-dPop_Hiv = zeros(size(pop));
-
-for s = 1 : sites
-    for r = 1 : risk
-        % update HIV status for HIV and GC coinfected
-        dPop_Hiv(: , 2 , s , r) = dPop_Hiv(: , 2 , s , r) + ...
-            gcHivTransMat(: , : , s) ...
-            * squeeze(pop(: , 2 , s , r));
-        % update HIV status for HIV infected
-        dPop_Hiv(: , 1 , s , r) = dPop_Hiv(: , 1 , s , r) + ...
-            gcHivTransMat(: , : , s) ...
-            * squeeze(pop(: , 1 , s , r));
-    end
-end
-
-dPop = dPop + dPop_Hiv;
+hivTreat(3 , 1 , 1 , :) = kHivTreat * pop(3 , 1 , 1 , :);
+gcHivTreat(3 , 2 , : , :) = kHivTreat * pop(3 , 2 , : , :);
+dPop(3 , 1 , 1 , :) = dPop(3 , 1 , 1 , :) - hivTreat(3 , 1 , 1 , :); % GC-, HIV screened -> 
+dPop(4 , 1 , 1 , :) = dPop(4 , 1 , 1 , :) + hivTreat(3 , 1 , 1 , :);  % -> GC-, HIV treated
+dPop(3 , 2 , : , :) = dPop(3 , 2 , : , :) - gcHivTreat(3 , 2 , : , :); % GC+, HIV screened ->
+dPop(4 , 2 , : , :) = dPop(4 , 2 , : , :) + gcHivTreat(3 , 2 , : , :); % -> GC+, HIV treated
 
 %% Births and Deaths
-dPop_bd = -kDie .* pop;
-for r = 1 : 3
-    dPop_bd(1 , 1 , 1 , r) = dPop_bd(1 , 1 , 1 , r) ...
-        + sum(kBorn .* pop(:)) .* riskVec(r);
-end
-dPop = dPop + dPop_bd;
+% dPop_bd = -kDie .* pop;
+% for r = 1 : 3
+%     dPop_bd(1 , 1 , 1 , r) = dPop_bd(1 , 1 , 1 , r) ...
+%         + sum(kBorn .* pop(:)) .* riskVec(r);
+% end
+% dPop = dPop + dPop_bd;
 
 % convert dPop back to column vector for ODE solver
 dPop = dPop(:);
