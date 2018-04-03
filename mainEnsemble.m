@@ -11,8 +11,8 @@ tspan = startYear : 1 / stepsPerYear : endYear;
 tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
 popInitial(1 , 1 , 1 , 3) =  100469 * 0.99;% - 10000 + 10526 + 27366; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 9000 * 0.9; 
-popInitial(1 , 1 , 1 , 1) = 1000 * 0.9;
+popInitial(1 , 1 , 1 , 2) = 9000 * 0.85; 
+popInitial(1 , 1 , 1 , 1) = 1000 * 0.8;
 popInitial(1 , 2 , 2 : 4 , 1 : 2) = 10;
 popInitial(2 , 1 , 1 , 1) = 1000 * 0.2;
 popInitial(2 , 1 , 1 , 2) = 9000 * 0.15;
@@ -271,6 +271,7 @@ hiv_sus = sum(sum(sum(sum(popMats(: , : , 1 , 1 : stiTypes , 1 : sites ,...
     1 : risk) , 3) , 4), 5) , 6) ./ totalPop * 100;
 subplot(2 , 1 , 2)
 plot(t , hiv_sus , 'Color' , [0.45 , 0.45 , 0.45])
+hold on 
 plot(t , mean(hiv_sus) , 'r')
 title('HIV-Susceptible')
 xlabel('Year'); ylabel('Proportion (%)')
