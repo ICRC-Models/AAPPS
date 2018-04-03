@@ -4,105 +4,117 @@ load('genParams')
 load('gcParams')
 load('gcHivParams')
 load('partnerParams')
-stepsPerYear = 200;
-startYear = 1990;
+stepsPerYear = 50;
+startYear = 1985;
 endYear = 2020;
 tspan = startYear : 1 / stepsPerYear : endYear;
 tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
-popInitial(1 , 1 , 1 , 3) =  100469;% - 10000 + 10526 + 27366; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 9000;
-popInitial(1 , 1 , 1 , 1) = 1000;
-% popInitial(1 , 2 , 2 : 4 , 1) = 10;
-% popInitial(1 , 2 , 2 : 4 , 2) = 10;
-% popInitial(1 , 2 , 2 : 4 , 3) = 10;
-% popInitial(1 , 1 , 1 , 2) = 5000; % N (medium risk)
-popInitial(1 , 2 , 2 , 1 : 2) = 20;
-popInitial(2 , 1 , 1 , 1 : 2) = 2;
-% popInitial(2 , 1 , 1 , 2) = 1; %424 * 0.9; % I (Medium risk)
-% popInitial(2 , 1 , 1 , 3) = 1;
-% popInitial(2 , 1 , 2 : 4 , 2) = 10  * 0.1 / 3; % I (medium risk)
-% popInitial(3 , 1 , 1 , 1) = 390 * 0.1; % K
-% popInitial(4 , 1 , 1 , 2) = 3972; % V
-%popInitial(5 , 1 , 1 , 3) = 10526 + 27366; % P
-popInitial(: , : , : , :) = popInitial(: , : , : , :) + 10^-9;
+popInitial(1 , 1 , 1 , 3) =  100469 * 0.99;% - 10000 + 10526 + 27366; % N (low risk)
+popInitial(1 , 1 , 1 , 2) = 9000 * 0.9; 
+popInitial(1 , 1 , 1 , 1) = 1000 * 0.9;
+popInitial(1 , 2 , 2 , 1 : 2) = 10;
+popInitial(2 , 1 , 1 , 1) = 1000 * 0.2;
+popInitial(2 , 1 , 1 , 2) = 9000 * 0.15;
+popInitial(2 , 1 , 1 , 3) = 0.01 * 100460;
 condUse = [0.44 , 0.25 , 0.23]; % condom usage by risk group (high, med, low)
 riskVec = zeros(risk , 1);
 for r = 1 : risk
-    riskVec(r) = sum(sum(sum(popInitial(: , : , : , r)))) ./ sum(popInitial(:));
+    riskVec(r) = sum(sum(sum(popInitial(: , : , : , r)))) ./ sum(popInitial(:)); % risk structure remains constant thorughout simulation
 end
 %%
 partners = c;
-sympref('HeavisideAtOrigin' , 1);
+% sympref('HeavisideAtOrigin' , 1);
 %% Scale up vectors
 
-intStart = 2000; % start year for intervention
-intPlat = 2010; % plateau year for intervention
-targetVal = 0.3;% 0.05; %0.3; % target value in plateau year
+intStart = startYear; % start year for intervention
+intPlat = startYear + 5; % plateau year for intervention
+
+% partner services
+psTreatMatTarget = 2 .* (1 - exp(-(p_ps .* kDiagTreat)));
+% routine treatment scale-up
+routineTreatMatTarget = 2 .* (1 - exp(-(p_routine .* kDiagTreat)));
+routineTreatMat_init = 0.1 .* routineTreatMatTarget;
 
 % intial value before intervention starts
-kTest_p_ps = zeros(size(tspan));
-kTreat_p_ps = zeros(size(tspan));
-kTest_u_ps = zeros(size(tspan));
-kTreat_u_ps = zeros(size(tspan));
-kTest_r_ps = zeros(size(tspan));
-kTreat_r_ps = zeros(size(tspan));
+intStartInd = round((intStart - startYear) * stepsPerYear) + 1; % index corresponding to intervention start year
+intPlatInd = round((intPlat - startYear) * stepsPerYear) + 1; % index corresponding to intervention plateau year
 
-k_gcPS_target = k_gcPS(1) / 10;
-k_gcPS = zeros(size(tspan));
+hivScreenStart = 1995;
+hivScreenPlat = 2000;
 
-
-intStartInd = round((intStart - startYear) * stepsPerYear);
-intPlatInd = round((intPlat - startYear) * stepsPerYear);
-tScale = tspan(intStartInd : intPlatInd) - intStartInd;
+intStartInd_HivScreen = round((hivScreenStart - startYear) * stepsPerYear) + 1; % index corresponding to HIV screen start year
+intPlatInd_HivScreen = round((hivScreenPlat - startYear) * stepsPerYear) + 1; % index corresponding to HIV screen plateau year
 
 % ramp up from intervention start year to plateau year
-kTest_p_ps(intStartInd : intPlatInd) = targetVal / (intPlat - intStart) ... 
-    * tScale;
-kTreat_p_ps(intStartInd : intPlatInd) = targetVal / (intPlat - intStart) ... 
-    * tScale;
-kTest_u_ps(intStartInd : intPlatInd) = targetVal / (intPlat - intStart) ... 
-    * tScale;
-kTreat_u_ps(intStartInd : intPlatInd) = targetVal / (intPlat - intStart) ... 
-    * tScale;
-kTest_r_ps(intStartInd : intPlatInd) = targetVal / (intPlat - intStart) ... 
-    * tScale;
-kTreat_r_ps(intStartInd : intPlatInd) = targetVal / (intPlat - intStart) ... 
-    * tScale;
 
-k_gcPS(intStartInd : intPlatInd) = k_gcPS_target / (intPlat - intStart)...
-    * tScale;
+% increment in GC and HIV screening from start year to plateau year
+kHivScreen_init = 0;
+kHivScreen = 0.5; % 50% HIV screen rate plateau (assumption) TEST 1/2
+d_psTreatMat = psTreatMatTarget ./ (intPlatInd - intStartInd); % increment in GC and HIV screening through PS from start to plateau year 
+d_routineTreatMat = (routineTreatMatTarget - routineTreatMat_init) ./ (intPlatInd - intStartInd); % increment in GC and HIV screening through routine screening from start to plateau year 
+d_kHivScreen = (kHivScreen - kHivScreen_init) ./ (intPlatInd_HivScreen - intStartInd_HivScreen); % increment in HIV screening from start to plateau year 
 
+% Scale factors for PS and routine screening
+fScale = zeros(length(tspan) , 1);
+fScale(intPlatInd : end) = intPlatInd - intStartInd; % scale factor between intervention start and plateau years
+fScale(intStartInd : intPlatInd) = [0 : intPlatInd - intStartInd]; % scale factor for plateau year onward 
 
-% rate following plateau year
-kTest_p_ps(intPlatInd + 1 : end) = kTest_p_ps(intPlatInd);
-kTreat_p_ps(intPlatInd + 1 : end) = kTreat_p_ps(intPlatInd);
-kTest_u_ps(intPlatInd + 1 : end) = kTest_u_ps(intPlatInd);
-kTreat_u_ps(intPlatInd + 1 : end) = kTreat_u_ps(intPlatInd);
-kTest_r_ps(intPlatInd + 1 : end) = kTest_r_ps(intPlatInd);
-kTreat_r_ps(intPlatInd + 1 : end) = kTreat_r_ps(intPlatInd);
+% Scale factors for HIV screening
+fScale_HivScreen = zeros(length(tspan) , 1);
+fScale_HivScreen(intPlatInd_HivScreen : end) = intPlatInd_HivScreen - intStartInd_HivScreen; % scale factor for plateau value
+fScale_HivScreen(intStartInd_HivScreen : intPlatInd_HivScreen) = [0 : intPlatInd_HivScreen - intStartInd_HivScreen];
 
-k_gcPS(intPlatInd + 1 : end) = k_gcPS(intPlatInd);
+%%
+% scale-up HIV serosorting from 1990 (hAssStart) to 2000 (hAssPlat)
+hAssStart = startYear; % HIV assorting start year
+hAssPlat = 2000; % HIV assorting plateau year
+hAssStartInd = round((hAssStart - startYear) * stepsPerYear) + 1; % index corresponding to HIV assorting start year
+hAssPlatInd = round((hAssPlat - startYear) * stepsPerYear) + 1; % index corresponding to HIV assorting plateau year
+hAssortTarget = 0.8; % Target plateau value for HIV assortativity
+hAssort_init = 0; % Initial HIV assortativity value
+hScale = zeros(length(tspan) , 1);
+d_hAssort = (hAssortTarget - hAssort_init) ./ (hAssPlatInd - hAssStartInd);
+hScale(hAssStartInd : end) = hAssPlatInd - hAssStartInd;
+hScale(hAssStartInd : hAssPlatInd) = [0 : hAssPlatInd - hAssStartInd];
 
+rAssort = 0.5; % risk assortativity
+
+kHivTreat = 1-exp(-0.9); % Hypothetical HIV treatment rate
+% gcClear = gcClear;
+%%
+figure()
+subplot(2 , 1 , 1)
+plot(tVec , hScale .* d_hAssort)
+title('HIV Assortativity')
+
+% subplot(2 , 2 , 2)
+% plot(tVec ,  fScale .* d_psTreatMat)
+% title('Partner Services Scale-Up')
+% 
+% subplot(2 , 2 , 3)
+% plot(tVec ,  fScale .* d_routineTreatMat)
+% title('Routine Screen Scale-Up')
+
+subplot(2 , 1 , 2)
+plot(tVec , fScale_HivScreen .* d_kHivScreen)
+title('HIV Screen Scale-Up')
 %% ODE solver
-% k_treatOut = 0.5 * k_treatOut; % test
+% ODE options: Absolute tolerance: 10^-3 (ODE solver ignores differences in values less than 10^-3). 
+% NonNegative option ensures solutions with negative values are not generated. 
+options = odeset('AbsTol', 1e-4, 'NonNegative' , 1);
 disp('Running...')
-[t , pop] = ode23s(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-    risk , kBorn , kDie , pSite , gcTreat , k_gcPS , gcClear , kInt , ...
-    perActInf , rTreat_v , k_toPrep, k_prepOut , kTest_i , ...
-    kTreat_i , k_treatOut , kprep_u , kprep_u_ps , kTest_u , kTest_u_ps , ...
-    kTreat_u , kTreat_u_ps , kTreat_k , kTreat_k_ps , kprep_p , kprep_p_ps , kTest_p , ...
-    kTest_p_ps , kTreat_p , kTreat_p_ps , kprep_r , kprep_r_ps , kTest_r , ...
-    kTest_r_ps , kTreat_r , kTreat_r_ps , partners , p_cond , acts , riskVec , ...
-    condUse , tVec) , tspan , popInitial);
+[t , pop] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
+    risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+    p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
+    kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
+    condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec) , ...
+    tspan , popInitial , options);
 
 disp('Finished solving')
 
 % reshape pop vector
 pop = reshape(pop , [size(pop , 1) , hivStatus , stiTypes , sites , risk]);
-
-
-
 
 %% plot settings (completely optional)
 colors = [241, 90, 90;
@@ -133,7 +145,7 @@ ax.GridAlpha = 0.4;
 %% plots
 figure()
 totalPop = sum(sum(sum(sum(pop , 2) , 3) , 4) , 5);
-plot(t , round(totalPop))
+plot(t , totalPop)
 title('Population Size'); xlabel('Year'); ylabel('Persons')
 
 allGC = sum(sum(sum(pop(: , 1 : hivStatus , 2  , 2 : sites , 1 : 3) , 2) , 4) , 5);
@@ -181,7 +193,7 @@ gc_hivTested = sum(sum(pop(: , 3 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 10
 gc_prepImm = sum(sum(pop(: , 5 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 100;
 
 figure()
-plot(t , round(gc_hivInf , 2) , t , round(gc_hivTreated , 2) , t , round(gc_hivTested , 2) , t , round(gc_prepImm , 2))
+plot(t , gc_hivInf , t , gc_hivTreated , t , gc_hivTested , t , gc_prepImm)
 title('GC-HIV CoInfection')
 legend('GC + HIV Infected' , 'GC + HIV Treated' , 'GC + HIV Tested' ,...
     'GC + PrEP/Immune')
@@ -192,14 +204,14 @@ xlabel('Year'); ylabel('Prevalence (%)')
 figure()
 gc_Sus = sum(sum(sum(sum(pop(: , 1 : hivStatus , 1 , 1 : 4 , 1 : risk) , 2) , 3), 4) , 5) ./ totalPop * 100;
 subplot(2 , 1 , 1)
-plot(t , round(gc_Sus , 2))
+plot(t , gc_Sus)
 title('GC-Susceptible')
 xlabel('Year'); ylabel('Proportion (%)')
 axis([tVec(1) tVec(end) 0 100])
 
 hiv_sus = sum(sum(sum(sum(pop(: , 1 , 1 : stiTypes , 1 : sites , 1 : risk) , 2) , 3), 4) , 5) ./ totalPop * 100;
 subplot(2 , 1 , 2)
-plot(t , round(hiv_sus , 2))
+plot(t , hiv_sus)
 title('HIV-Susceptible')
 xlabel('Year'); ylabel('Proportion (%)')
 axis([tVec(1) tVec(end) 0 100])
