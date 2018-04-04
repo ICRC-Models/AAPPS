@@ -34,12 +34,12 @@ perAct_Anal = [0 , 0.84 , 0 ;... % rectal -> (x, urethral , pharyngeal)
     0 , 0.62 , 0]; % pharyngeal -> (x , urethral , x)
 
 perAct_Oral = [0 , 0 , 0 ; ... % rectal -> (x , x , x)
-    0 , 0.62 , 0.62 ;... % urethral -> (x , urethral , pharyngeal)
-    0 , 0.62 , 0.62]; % pharyngeal -> (x , urethral , pharyngeal)
+    0 , 0 , 0.62 ;... % urethral -> (x , x , pharyngeal)
+    0 , 0.62 , 0.62] .* 0.01; % pharyngeal -> (x , urethral , pharyngeal)
 
 perActHiv = 0.82 * 10 ^ -2; % anal transmission
 
-acts = acts; % half anal, half oral for testing
+acts = acts ./ 2; % half anal, half oral for testing
 
 % transmission probabilities assume independence of potential transmission events
 perPartner_Anal = min(1 - (1 - perAct_Anal) .^ acts , 0.99999); % GC anal transmission probability
@@ -222,14 +222,14 @@ for h = 1 : hivNegPosImm
                     if popSubtotal > 0
                         % if h ~= 1 (not hiv negative group) 
                         contactProb = 0;
-                        if popGroup(ty , s , r) > 10 ^ -6
-                            contactProb = popGroup(ty , s , r) ./ popSubtotal; % proportion of pop with sti 
+                        if popGroup(ty , ss , r) > 10 ^ -6
+                            contactProb = popGroup(ty , ss , r) ./ popSubtotal; % proportion of pop with sti 
                         end
                         contactProbHiv = 0; % for HIV positive or HIV-immune group (HIV status known)
                         % per partner transmission probabilities
                         joint = perPartner_Anal(s , ss) * perPartnerHiv; % sti and hiv
                         p_hiv = perPartnerHiv; % hiv
-                                                     
+                        
                         if h == 1 && hivPosActual(1 , ty , s , r) > 10 ^ -6
                             contactProbHiv = hivPosActual(1 , ty , s , r) ./ popSubtotal; % proportion of "hiv-neg" that are really hiv-pos
                         end
@@ -237,16 +237,16 @@ for h = 1 : hivNegPosImm
                         % ADD protection from condoms here
                         perYear_AnalInf(h , ty , 1 , r , s , ss) = ... % probability of getting STI
                             - log(1 - (ty > 1) * perPartner_Anal(s , ss)) ... % evaluate probability of getting STI for STI indices, i.e. if t > 1
-                            .* (1 - condUse(r)) .* contactProb;
+                            .* contactProb .* (1 - condUse(r));
                         
                         if h <= 3 % getting HIV from infectious or tested
                             perYear_AnalInf(h , ty , 2 , r , s , ss) = ... % probability of getting HIV
-                                - log(1 - (p_hiv - joint * (ty > 1))) ...                        
-                                .* (1 - condUse(r)) .* contactProbHiv;  % ADD protection from condoms here
+                                - log(1 - (p_hiv - joint * (ty > 1))) ...
+                                .* contactProbHiv .* (1 - condUse(r));  % ADD protection from condoms here
                             perYear_AnalInf(h , ty , 3 , r , s , ss) = ... probability of getting HIV and STI
                                 - log(1 - joint * (ty > 1)) ...
-                                .* (1 - condUse(r)) .* contactProbHiv;   % ADD protection from condoms here
-
+                                .* contactProbHiv .* (1 - condUse(r));   % ADD protection from condoms here
+                            
                         end
                         
                         % oral (non-HIV STIs)
