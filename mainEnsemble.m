@@ -10,13 +10,13 @@ endYear = 2020;
 tspan = startYear : 1 / stepsPerYear : endYear;
 tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
-popInitial(1 , 1 , 1 , 3) =  100469 * 0.99;% - 10000 + 10526 + 27366; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 9000 * 0.85; 
-popInitial(1 , 1 , 1 , 1) = 1000 * 0.8;
+popInitial(1 , 1 , 1 , 3) =  100469 * 0.98;% - 10000 + 10526 + 27366; % N (low risk)
+popInitial(1 , 1 , 1 , 2) = 9000 * 0.8; 
+popInitial(1 , 1 , 1 , 1) = 1000 * 0.75;
 popInitial(1 , 2 , 2 : 4 , 1 : 2) = 10;
-popInitial(2 , 1 , 1 , 1) = 1000 * 0.2;
-popInitial(2 , 1 , 1 , 2) = 9000 * 0.15;
-popInitial(2 , 1 , 1 , 3) = 0.01 * 100460;
+popInitial(2 , 1 , 1 , 1) = 1000 * 0.25;
+popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
+popInitial(2 , 1 , 1 , 3) = 0.02 * 100460;
 condUse = [0.44 , 0.25 , 0.23]; % condom usage by risk group (high, med, low)
 riskVec = zeros(risk , 1);
 for r = 1 : risk
@@ -103,21 +103,28 @@ title('HIV Screen Scale-Up')
 % ODE options: Absolute tolerance: 10^-3 (ODE solver ignores differences in values less than 10^-3). 
 % NonNegative option ensures solutions with negative values are not generated. 
 options = odeset('AbsTol', 1e-4, 'NonNegative' , 1);
-sims = 36; % specify number of simulations to run (use multiple of number of cores available on machine)
+sims = 24; % specify number of simulations to run (use multiple of number of cores available on machine)
 popArray = cell(sims ,1); % array of population matrices to collect results from each simulation
 condUse_Base = condUse; % Assign mean condom use values to condUse_Base. Assignment required for parfor.
 gcClear_Base = gcClear; % Assign mean GC clearance values to gcClear_Base. Assignment required for parfor.
 
+% track parameter values used
+condUseVec = zeros(sims , 3);
+gcClearVec = zeros(sims , 1);
+
 disp('Running...')
+tic
 % Run sim-1 simulations in parfor loop
 parfor i = 2 : sims
-    condUseMult = ones(1 , 3); 
+    condUseMult = ones(1 , 3);
     for j = 1 : risk
         condUseMult(j) = abs(normrnd(1 , 0.5)); % draw condom usage multiplier from a normal distribution (positive values only)
     end
     gcClearMult = abs(normrnd(1 , 0.5)); % draw GC clearance multiplier from a normal distribution (positive values only)
-    gcClear = gcClearMult .* gcClear_Base; 
+    gcClear = gcClearMult .* gcClear_Base;
     condUse = condUseMult .* condUse_Base;
+    condUseVec(i , :) = condUse;
+    gcClearVec(i) = gcClear(1 , 1);
     [t , popArray{i}] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
         risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
         p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
@@ -134,6 +141,8 @@ end
 gcClearMult = normrnd(1 , 0.5);
 gcClear = gcClearMult .* gcClear_Base;
 condUse = condUseMult .* condUse_Base;
+condUseVec(1 , :) = condUse;
+gcClearVec(1) = gcClear(1 , 1);
 [t , popArray{1}] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
     risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
@@ -141,7 +150,8 @@ condUse = condUseMult .* condUse_Base;
     condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec) , ...
     tspan , popInitial , options);
 disp('Finished solving')
-
+disp(' ')
+toc
 % reshape pop vector (column -> multidimensional matrix with dimensions
 % specified below)
 popMats = zeros(sims , length(tVec) , hivStatus , stiTypes , sites , risk);
@@ -190,6 +200,31 @@ plot(t , mean(allGC ./ totalPop * 100) , 'r')
 title('GC Positive Individuals')
 xlabel('Year'); ylabel('Prevalence (%)')
 axis([tVec(1) tVec(end) 0 100])
+
+% Varied parameter distributions
+figure()
+rGroups = {'High risk' , 'Medium risk' , 'Low risk'};
+for r = 1 : risk
+    subplot(1 , 3 , r)
+    histogram(condUseVec(: , r));
+    title([rGroups{r} , ' condom usage'])
+    xlabel('Condom Usage Rate')
+end
+%%
+figure()
+for r = 1 : risk
+    histogram(condUseVec(: , r));
+    hold on
+end
+title('Condom usage')
+xlabel('Condom Usage Rate')
+legend('High risk' , 'Medium risk' , 'Low risk')
+%%
+figure()
+histogram(gcClearVec)
+title('GC Clearance Rates')
+xlabel('GC Clearance Rate')
+
 % 
 % 
 % allGC_site = squeeze(bsxfun(@rdivide , ...
@@ -289,6 +324,16 @@ prepImm = bsxfun(@rdivide , squeeze(sum(sum(popMats(: , : , 5 , : , : , :) , 4) 
 hivArray = {hivInf, hivTested, hivTreated, prepImm};
 hivPlotTitle = {'Infected' , 'Tested' , 'Treated' , 'Immune'};
 
+% Overall HIV prevalence
+figure()
+hivAll = sum(sum(sum(sum(popMats(: , : , 2 : 5 , : , : , :), 3) , 4) , 5) , 6)...
+    ./ totalPop * 100;
+plot(t , hivAll , 'Color' , [0.45 0.45 0.45])
+hold on
+plot(t , mean(hivAll) , 'r')
+title('Overall HIV Prevalence')
+xlabel('Year'); ylabel('Prevalence (%)')
+
 for i = 1 : size(hivArray,2)
     figure()
     plot(t , hivArray{i}(: , : , 1) , 'Color' , [0.5 , 0.5 , 0.45])
@@ -304,3 +349,21 @@ for i = 1 : size(hivArray,2)
     legend([h1 , h2 , h3] , {'High Risk' , 'Medium Risk' , 'Low Risk'})
     xlabel('Year'); ylabel('Prevalence (%)')
 end
+%%
+% GC
+totalPop_Risk = squeeze(sum(sum(sum(popMats(: , : , : , : , : , :), 3), 4) , 5));
+gcInf = bsxfun(@rdivide , squeeze(sum(sum(popMats(: , : , : , 2 , 2 : 4 , :) , 3) , 5)) ...
+    , totalPop_Risk) * 100;
+figure()
+plot(t , gcInf(: , : , 1) , 'Color' , [0.5 , 0.5 , 0.45])
+hold on
+plot(t , gcInf(: , : , 1) , 'Color' , [0.5 , 0.45 , 0.5])
+hold on
+plot(t , gcInf(: , : , 1) , 'Color' , [0.45 , 0.5 , 0.5])
+hold on
+h1 = plot(t , mean(gcInf(: , : , 1)));
+h2 = plot(t , mean(gcInf(: , : , 2)));
+h3 = plot(t , mean(gcInf(: , : , 3)));
+title('GC Infection Prevalence by Risk Group')
+legend([h1 , h2 , h3] , {'High Risk' , 'Medium Risk' , 'Low Risk'})
+xlabel('Year'); ylabel('Prevalence (%)')
