@@ -10,13 +10,13 @@ endYear = 2020;
 tspan = startYear : 1 / stepsPerYear : endYear;
 tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
-popInitial(1 , 1 , 1 , 3) =  100469 * 0.99;% - 10000 + 10526 + 27366; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 9000 * 0.85; 
-popInitial(1 , 1 , 1 , 1) = 1000 * 0.8;
+popInitial(1 , 1 , 1 , 3) =  100469 * 0.98;% - 10000 + 10526 + 27366; % N (low risk)
+popInitial(1 , 1 , 1 , 2) = 9000 * 0.8; 
+popInitial(1 , 1 , 1 , 1) = 1000 * 0.75;
 popInitial(1 , 2 , 2 : 4 , 1 : 2) = 10;
-popInitial(2 , 1 , 1 , 1) = 1000 * 0.2;
-popInitial(2 , 1 , 1 , 2) = 9000 * 0.15;
-popInitial(2 , 1 , 1 , 3) = 0.01 * 100460;
+popInitial(2 , 1 , 1 , 1) = 1000 * 0.25;
+popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
+popInitial(2 , 1 , 1 , 3) = 0.02 * 100460;
 condUse = [0.44 , 0.25 , 0.23]; % condom usage by risk group (high, med, low)
 riskVec = zeros(risk , 1);
 for r = 1 : risk
@@ -104,15 +104,16 @@ title('HIV Screen Scale-Up')
 % NonNegative option ensures solutions with negative values are not generated. 
 options = odeset('AbsTol', 1e-4, 'NonNegative' , 1);
 disp('Running...')
+tic
 [t , pop] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
     risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
     kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
     condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec) , ...
     tspan , popInitial , options);
-
 disp('Finished solving')
-
+disp(' ')
+toc
 % reshape pop vector
 pop = reshape(pop , [size(pop , 1) , hivStatus , stiTypes , sites , risk]);
 
@@ -186,6 +187,14 @@ legend('Infected' , 'Treated' , 'Tested' , 'PrEP/Immune')
 xlabel('Year'); ylabel('Prevalence (%)')
 % axis([tVec(1) tVec(end) 0 20])
 
+% Overall HIV prevalence
+figure()
+hivAll = sum(sum(sum(sum(pop(: , 2 : 5 , : , : , :), 2) , 3) , 4) , 5)...
+    ./ totalPop * 100;
+plot(t , hivAll)
+title('Overall HIV Prevalence')
+xlabel('Year'); ylabel('Prevalence (%)')
+
 % GC-HIV
 gc_hivInf = sum(sum(pop(: , 2 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 100;
 gc_hivTreated = sum(sum(pop(: , 4 , 2 , 2 : sites , :) , 4) , 5) ./ totalPop * 100;
@@ -235,3 +244,13 @@ for i = 1 : size(hivArray,2)
     legend('High Risk' , 'Medium Risk' , 'Low Risk')
     xlabel('Year'); ylabel('Prevalence (%)')
 end
+
+%%
+% GC
+totalPop_Risk = squeeze(sum(sum(sum(pop(: , : , : , : , :), 2), 3) , 4));
+gcInf = bsxfun(@rdivide , squeeze(sum(sum(pop(: , : , 2 , 2 : 4 , :) , 2) , 4)) , totalPop_Risk) * 100;
+figure()
+plot(t , gcInf)
+title('GC Infected')
+legend('High Risk' , 'Medium Risk' , 'Low Risk')
+xlabel('Year'); ylabel('Prevalence (%)')
