@@ -17,8 +17,9 @@ popInitial(1 , 2 , 2 : 4 , 1 : 2) = 10;
 popInitial(2 , 1 , 1 , 1) = 1000 * 0.25;
 popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
 popInitial(2 , 1 , 1 , 3) = 0.02 * 100460;
-condUse = [0.44 , 0.25 , 0.23]; % condom usage by risk group (high, med, low)
+condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
 riskVec = zeros(risk , 1);
+popNew = popInitial .* 0.01;
 for r = 1 : risk
     riskVec(r) = sum(sum(sum(popInitial(: , : , : , r)))) ./ sum(popInitial(:)); % risk structure remains constant thorughout simulation
 end
@@ -101,12 +102,11 @@ plot(tVec , fScale_HivScreen .* d_kHivScreen)
 title('HIV Screen Scale-Up')
 %% ODE solver
 % ODE options: Absolute tolerance: 10^-3 (ODE solver ignores differences in values less than 10^-3). 
-% NonNegative option ensures solutions with negative values are not generated. 
-options = odeset('AbsTol', 1e-4, 'NonNegative' , 1);
+options = odeset('stats' , 'on' , 'RelTol' , 1e-3);
 disp('Running...')
 tic
 [t , pop] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-    risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+    risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
     kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
     condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec) , ...
@@ -209,6 +209,25 @@ legend('GC + HIV Infected' , 'GC + HIV Treated' , 'GC + HIV Tested' ,...
 xlabel('Year'); ylabel('Prevalence (%)')
 % axis([tVec(1) tVec(end) 0 100])
 
+% GC Prevalence by HIV status
+gc_hivInf = sum(sum(pop(: , 2 , 2 , 2 : sites , :) , 4) , 5) ./...
+    sum(sum(sum(pop(: , 2 , : , : , :) , 3) , 4) , 5) * 100;
+gc_hivTreated = sum(sum(pop(: , 4 , 2 , 2 : sites , :) , 4) , 5) ./ ...
+    sum(sum(sum(pop(: , 4 , : , : , :) , 3) , 4) , 5) * 100;
+gc_hivTested = sum(sum(pop(: , 3 , 2 , 2 : sites , :) , 4) , 5) ./ ...
+    sum(sum(sum(pop(: , 3 , : , : , :) , 3) , 4) , 5) * 100;
+gc_prepImm = sum(sum(pop(: , 5 , 2 , 2 : sites , :) , 4) , 5) ./ ...
+    sum(sum(sum(pop(: , 5 , : , : , :) , 3) , 4) , 5) * 100;
+gc_hivNeg = sum(sum(pop(: , 1 , 2 , 2 : sites , :) , 4) , 5) ./ ...
+    sum(sum(sum(pop(: , 1 , : , : , :) , 3) , 4) , 5) * 100;
+
+figure()
+plot(t , gc_hivInf , t , gc_hivTreated , t , gc_hivTested , t , gc_prepImm , ...
+    t , gc_hivNeg)
+title('GC Prevalence by HIV Status')
+legend('HIV Infected' , 'HIV Treated' , 'HIV Tested' ,...
+    'PrEP/Immune' , 'HIV Negative')
+xlabel('Year'); ylabel('Prevalence (%)')
 %% GC and HIV susceptibles
 figure()
 gc_Sus = sum(sum(sum(sum(pop(: , 1 : hivStatus , 1 , 1 : 4 , 1 : risk) , 2) , 3), 4) , 5) ./ totalPop * 100;

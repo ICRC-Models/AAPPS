@@ -17,7 +17,8 @@ popInitial(1 , 2 , 2 : 4 , 1 : 2) = 10;
 popInitial(2 , 1 , 1 , 1) = 1000 * 0.25;
 popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
 popInitial(2 , 1 , 1 , 3) = 0.02 * 100460;
-condUse = [0.44 , 0.25 , 0.23]; % condom usage by risk group (high, med, low)
+popNew = popInitial .* 0.01;
+condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
 riskVec = zeros(risk , 1);
 for r = 1 : risk
     riskVec(r) = sum(sum(sum(popInitial(: , : , : , r)))) ./ sum(popInitial(:)); % risk structure remains constant thorughout simulation
@@ -100,9 +101,9 @@ subplot(2 , 1 , 2)
 plot(tVec , fScale_HivScreen .* d_kHivScreen)
 title('HIV Screen Scale-Up')
 %% ODE solver
-% ODE options: Absolute tolerance: 10^-3 (ODE solver ignores differences in values less than 10^-3). 
+% ODE options: Absolute tolerance: 10^-4 (ODE solver ignores differences in values less than 10^-3). 
 % NonNegative option ensures solutions with negative values are not generated. 
-options = odeset('AbsTol', 1e-4, 'NonNegative' , 1);
+options = odeset('RelTol', 1e-3);
 sims = 24; % specify number of simulations to run (use multiple of number of cores available on machine)
 popArray = cell(sims ,1); % array of population matrices to collect results from each simulation
 condUse_Base = condUse; % Assign mean condom use values to condUse_Base. Assignment required for parfor.
@@ -126,7 +127,7 @@ parfor i = 2 : sims
     condUseVec(i , :) = condUse;
     gcClearVec(i) = gcClear(1 , 1);
     [t , popArray{i}] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-        risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+        risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
         p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
         kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
         condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec) , ...
@@ -134,17 +135,14 @@ parfor i = 2 : sims
 end
 
 % Run 1 simulation outside of parfor loop so that "t" variable is saved
-condUseMult = ones(1 , 3);
-for j = 1 : risk
-    condUseMult(j) = normrnd(1 , 0.5);
-end
+condUseMult = normrnd(1 , 0.5);
 gcClearMult = normrnd(1 , 0.5);
 gcClear = gcClearMult .* gcClear_Base;
 condUse = condUseMult .* condUse_Base;
 condUseVec(1 , :) = condUse;
 gcClearVec(1) = gcClear(1 , 1);
 [t , popArray{1}] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-    risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+    risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
     kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
     condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec) , ...
@@ -202,18 +200,19 @@ xlabel('Year'); ylabel('Prevalence (%)')
 axis([tVec(1) tVec(end) 0 100])
 
 % Varied parameter distributions
+%%
 figure()
 rGroups = {'High risk' , 'Medium risk' , 'Low risk'};
 for r = 1 : risk
     subplot(1 , 3 , r)
-    histogram(condUseVec(: , r));
+    histogram(condUseVec(: , r) , sims / 3);
     title([rGroups{r} , ' condom usage'])
     xlabel('Condom Usage Rate')
 end
 %%
 figure()
 for r = 1 : risk
-    histogram(condUseVec(: , r));
+    histogram(condUseVec(: , r) , sims / 3);
     hold on
 end
 title('Condom usage')
@@ -221,10 +220,10 @@ xlabel('Condom Usage Rate')
 legend('High risk' , 'Medium risk' , 'Low risk')
 %%
 figure()
-histogram(gcClearVec)
+histogram(gcClearVec , sims / 3)
 title('GC Clearance Rates')
 xlabel('GC Clearance Rate')
-
+%%
 % 
 % 
 % allGC_site = squeeze(bsxfun(@rdivide , ...
@@ -290,7 +289,36 @@ title('GC-HIV CoInfection')
 legend(h1 , {'GC + HIV Infected' , 'GC + HIV Treated' , 'GC + HIV Tested' ,...
     'GC + PrEP/Immune'})
 xlabel('Year'); ylabel('Prevalence (%)')
-% 
+
+% GC Prevalence by HIV status
+gc_hivInf = sum(sum(popMats(: , : , 2 , 2 , 2 : sites , :) , 5) , 6) ./...
+    sum(sum(sum(popMats(: , : , 2 , : , : , :) , 4) , 5) , 6) * 100;
+gc_hivTreated = sum(sum(popMats(: , : , 4 , 2 , 2 : sites , :) , 5) , 6) ./ ...
+    sum(sum(sum(popMats(: , : , 4 , : , : , :) , 4) , 5) , 6) * 100;
+gc_hivTested = sum(sum(popMats(: , : , 3 , 2 , 2 : sites , :) , 5) , 6) ./ ...
+    sum(sum(sum(popMats(: , : , 3 , : , : , :) , 4) , 5) , 6) * 100;
+gc_prepImm = sum(sum(popMats(: , : , 5 , 2 , 2 : sites , :) , 5) , 6) ./ ...
+    sum(sum(sum(popMats(: , : , 5 , : , : , :) , 4) , 5) , 6) * 100;
+gc_hivNeg = sum(sum(popMats(: , : , 1 , 2 , 2 : sites , :) , 5) , 6) ./ ...
+    sum(sum(sum(popMats(: , : , 1 , : , : , :) , 4) , 5) , 6) * 100;
+
+figure()
+plot(t , gc_hivInf , 'Color' , [0.45 0.5 0.5])
+hold on
+plot(t , gc_hivTreated , 'Color' , [0.5 0.45 0.5])
+hold on
+plot(t , gc_hivTested , 'Color' , [0.5 0.5 0.45])
+hold on
+plot(t , gc_prepImm , 'Color' , [0.35 0.5 0.5])
+hold on
+plot(t , gc_hivNeg, 'Color' , [0.5 0.35 0.5])
+hold on
+h1 = plot(t , mean(gc_hivInf) , t , mean(gc_hivTreated) , t , mean(gc_hivTested) , ...
+    t , mean(gc_prepImm) , t , mean(gc_hivNeg));
+title('GC Prevalence by HIV Status')
+legend(h1 , {'HIV Infected' , 'HIV Treated' , 'HIV Tested' ,...
+    'PrEP/Immune' , 'HIV Negative'})
+xlabel('Year'); ylabel('Prevalence (%)')
 %% GC and HIV susceptibles
 figure()
 gc_Sus = sum(sum(sum(sum(popMats(: , : , 1 : hivStatus , 1 , 1 : 4 , 1 : risk) , 3) , 4), 5) , 6) ./ totalPop * 100;
@@ -336,11 +364,11 @@ xlabel('Year'); ylabel('Prevalence (%)')
 
 for i = 1 : size(hivArray,2)
     figure()
-    plot(t , hivArray{i}(: , : , 1) , 'Color' , [0.5 , 0.5 , 0.45])
+    plot(t , hivArray{i}(: , : , 1) , 'Color' , [0.5 , 0.5 , 0.45] ./ 2)
     hold on
-    plot(t , hivArray{i}(: , : , 2) , 'Color' , [0.5 , 0.45 , 0.5])
+    plot(t , hivArray{i}(: , : , 2) , 'Color' , [0.5 , 0.45 , 0.5] ./ 2)
     hold on
-    plot(t , hivArray{i}(: , : , 3) , 'Color' , [0.45 , 0.5 , 0.5])
+    plot(t , hivArray{i}(: , : , 3) , 'Color' , [0.45 , 0.5 , 0.5] ./ 2)
     hold on
     h1 = plot(t , mean(hivArray{i}(: , : , 1)));
     h2 = plot(t , mean(hivArray{i}(: , : , 2)));
@@ -355,11 +383,11 @@ totalPop_Risk = squeeze(sum(sum(sum(popMats(: , : , : , : , : , :), 3), 4) , 5))
 gcInf = bsxfun(@rdivide , squeeze(sum(sum(popMats(: , : , : , 2 , 2 : 4 , :) , 3) , 5)) ...
     , totalPop_Risk) * 100;
 figure()
-plot(t , gcInf(: , : , 1) , 'Color' , [0.5 , 0.5 , 0.45])
+plot(t , gcInf(: , : , 1) , 'Color' , [0.5 , 0.5, 0.45] ./ 2)
 hold on
-plot(t , gcInf(: , : , 1) , 'Color' , [0.5 , 0.45 , 0.5])
+plot(t , gcInf(: , : , 2) , 'Color' , [0.5 , 0.45 , 0.5] ./ 2)
 hold on
-plot(t , gcInf(: , : , 1) , 'Color' , [0.45 , 0.5 , 0.5])
+plot(t , gcInf(: , : , 3) , 'Color' , [0.45 , 0.5 , 0.5] ./ 2)
 hold on
 h1 = plot(t , mean(gcInf(: , : , 1)));
 h2 = plot(t , mean(gcInf(: , : , 2)));
