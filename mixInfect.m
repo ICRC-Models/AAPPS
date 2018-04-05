@@ -1,5 +1,5 @@
 function dPop = mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-    risk , kBorn , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+    risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
     kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
     condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec)
@@ -35,7 +35,7 @@ perAct_Anal = [0 , 0.84 , 0 ;... % rectal -> (x, urethral , pharyngeal)
 
 perAct_Oral = [0 , 0 , 0 ; ... % rectal -> (x , x , x)
     0 , 0 , 0.62 ;... % urethral -> (x , x , pharyngeal)
-    0 , 0.62 , 0.62] .* 0.01; % pharyngeal -> (x , urethral , pharyngeal)
+    0 , 0.62 , 0] .* 0.01; % pharyngeal -> (x , urethral , x)
 
 perActHiv = 0.82 * 10 ^ -2; % anal transmission
 
@@ -239,7 +239,7 @@ for h = 1 : hivNegPosImm
                             - log(1 - (ty > 1) * perPartner_Anal(s , ss)) ... % evaluate probability of getting STI for STI indices, i.e. if t > 1
                             .* contactProb .* (1 - condUse(r));
                         
-                        if h <= 3 % getting HIV from infectious or tested
+                        if h <= 3 % getting HIV from infectious or tested, no transmission from HIV-positive on ART
                             perYear_AnalInf(h , ty , 2 , r , s , ss) = ... % probability of getting HIV
                                 - log(1 - (p_hiv - joint * (ty > 1))) ...
                                 .* contactProbHiv .* (1 - condUse(r));  % ADD protection from condoms here
@@ -323,8 +323,8 @@ for sTo = 1 : sites
         for tTo = 2 : stiTypes
             %STI-negative, HIV-positive / HIV-immune
             for h = 2 : hivStatus
-                hivStat = 2;
-                if h >= 3
+                hivStat = 2; % infectious, tested, treated
+                if h > 4 % PrEP
                     hivStat = 3;
                 end
                 infected = lambda(hivStat , r , 1 , tTo , sTo) ...
@@ -381,9 +381,9 @@ gc_n_psTreat = gc_psTreat;
 
 % change in GC infected by site of infection and HIV status
 for r = 1 : risk
-    %HIV-negative
     gc_n_rec(1 : 4 , 2 , 2 : 4 , r) = ... % natural clearance of GC
         (gcTransMat_rec .* squeeze(pop(1 : 4 , 2 , 2 : 4 , r))')';
+    %HIV-negative
     gc_n_routTreat(1 , 2 , 2 : 4 , r) =  ... % GC treatment through routine screening
         routineTreatMat(: , 1) .* squeeze(pop(1 , 2 , 2 : 4 , r));
     gc_n_sympTreat(1 , 2 , 2 : 4 , r) =... % GC treatment of symptomatics
@@ -445,12 +445,14 @@ dPop(3 , 2 , : , :) = dPop(3 , 2 , : , :) - gcHivTreat(3 , 2 , : , :); % GC+, HI
 dPop(4 , 2 , : , :) = dPop(4 , 2 , : , :) + gcHivTreat(3 , 2 , : , :); % -> GC+, HIV treated
 
 %% Births and Deaths
-% dPop_bd = -kDie .* pop;
+dPop_bd = -kDie .* pop; % uniformly remove a fraction of the population
+% replace fraction with a scaled-down version of the seed population
+dPop_bd = dPop_bd + popNew; 
 % for r = 1 : 3
 %     dPop_bd(1 , 1 , 1 , r) = dPop_bd(1 , 1 , 1 , r) ...
 %         + sum(kBorn .* pop(:)) .* riskVec(r);
 % end
-% dPop = dPop + dPop_bd;
+dPop = dPop + dPop_bd;
 
 % convert dPop back to column vector for ODE solver
 dPop = dPop(:);
