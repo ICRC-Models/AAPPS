@@ -10,14 +10,14 @@ endYear = 2020;
 tspan = startYear : 1 / stepsPerYear : endYear;
 tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
-popInitial(1 , 1 , 1 , 3) =  100469 * 0.98;% - 10000 + 10526 + 27366; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 9000 * 0.8; 
-popInitial(1 , 1 , 1 , 1) = 1000 * 0.75;
+popInitial(1 , 1 , 1 , 3) =  70469;% - 10000 + 10526 + 27366; % N (low risk)
+popInitial(1 , 1 , 1 , 2) = 10000 * 0.8; 
+popInitial(1 , 1 , 1 , 1) = 10000 * 0.75;
 popInitial(1 , 2 , 2 : 4 , 1 : 2) = 10;
-popInitial(2 , 1 , 1 , 1) = 1000 * 0.25;
+popInitial(2 , 1 , 1 , 1) = 10000 * 0.1;
 popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
-popInitial(2 , 1 , 1 , 3) = 0.02 * 100460;
-condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
+% condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
+condUse = [0.23 , 0.25 , 0.75]; % condom usage by risk group (high, med, low) TEST!!!
 riskVec = zeros(risk , 1);
 popNew = popInitial .* 0.01;
 for r = 1 : risk
@@ -25,11 +25,13 @@ for r = 1 : risk
 end
 %%
 partners = c;
+kDie = 0.001;
+kBorn = kDie;
 % sympref('HeavisideAtOrigin' , 1);
 %% Scale up vectors
 
 intStart = startYear; % start year for intervention
-intPlat = startYear + 5; % plateau year for intervention
+intPlat = startYear + 15; % plateau year for intervention
 
 % partner services
 psTreatMatTarget = 2 .* (1 - exp(-(p_ps .* kDiagTreat)));
@@ -42,7 +44,7 @@ intStartInd = round((intStart - startYear) * stepsPerYear) + 1; % index correspo
 intPlatInd = round((intPlat - startYear) * stepsPerYear) + 1; % index corresponding to intervention plateau year
 
 hivScreenStart = 1995;
-hivScreenPlat = 2000;
+hivScreenPlat = 2005;
 
 intStartInd_HivScreen = round((hivScreenStart - startYear) * stepsPerYear) + 1; % index corresponding to HIV screen start year
 intPlatInd_HivScreen = round((hivScreenPlat - startYear) * stepsPerYear) + 1; % index corresponding to HIV screen plateau year
@@ -51,7 +53,7 @@ intPlatInd_HivScreen = round((hivScreenPlat - startYear) * stepsPerYear) + 1; % 
 
 % increment in GC and HIV screening from start year to plateau year
 kHivScreen_init = 0;
-kHivScreen = 0.5; % 50% HIV screen rate plateau (assumption) TEST 1/2
+kHivScreen = 0.2; %5; % 50% HIV screen rate plateau (assumption) TEST 1/2
 d_psTreatMat = psTreatMatTarget ./ (intPlatInd - intStartInd); % increment in GC and HIV screening through PS from start to plateau year 
 d_routineTreatMat = (routineTreatMatTarget - routineTreatMat_init) ./ (intPlatInd - intStartInd); % increment in GC and HIV screening through routine screening from start to plateau year 
 d_kHivScreen = (kHivScreen - kHivScreen_init) ./ (intPlatInd_HivScreen - intStartInd_HivScreen); % increment in HIV screening from start to plateau year 
@@ -79,7 +81,7 @@ d_hAssort = (hAssortTarget - hAssort_init) ./ (hAssPlatInd - hAssStartInd);
 hScale(hAssStartInd : end) = hAssPlatInd - hAssStartInd;
 hScale(hAssStartInd : hAssPlatInd) = [0 : hAssPlatInd - hAssStartInd];
 
-rAssort = 0.5; % risk assortativity
+rAssort = 0.9; % risk assortativity
 
 kHivTreat = 1-exp(-0.9); % Hypothetical HIV treatment rate
 % gcClear = gcClear;
@@ -106,7 +108,7 @@ options = odeset('stats' , 'on' , 'RelTol' , 1e-3);
 disp('Running...')
 tic
 [t , pop] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-    risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+    risk , popNew , kDie , kBorn , gcClear , d_routineTreatMat , routineTreatMat_init , ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
     kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
     condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec) , ...
@@ -263,7 +265,14 @@ for i = 1 : size(hivArray,2)
     legend('High Risk' , 'Medium Risk' , 'Low Risk')
     xlabel('Year'); ylabel('Prevalence (%)')
 end
-
+%%
+riskDistHiv = squeeze(sum(sum(sum(pop(: , 2 : 4 , : , : , :), 2), 3), 4)) ./ ...
+    squeeze(sum(sum(sum(sum(pop(: , 2 : 4 , : , : , :), 2), 3), 4),5));
+figure()
+area(t , riskDistHiv)
+legend('High Risk' , 'Medium Risk' , 'Low Risk')
+xlabel('Year'); ylabel('Proportion')
+title('HIV Prevalence by Risk Group')
 %%
 % GC
 totalPop_Risk = squeeze(sum(sum(sum(pop(: , : , : , : , :), 2), 3) , 4));

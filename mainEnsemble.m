@@ -18,8 +18,8 @@ popInitial(2 , 1 , 1 , 1) = 1000 * 0.25;
 popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
 popInitial(2 , 1 , 1 , 3) = 0.02 * 100460;
 popNew = popInitial .* 0.01;
-condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
-riskVec = zeros(risk , 1);
+% condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
+condUse = [0.23 , 0.25 , 0.75]; % condom usage by risk group (high, med, low) TEST!!!riskVec = zeros(risk , 1);
 for r = 1 : risk
     riskVec(r) = sum(sum(sum(popInitial(: , : , : , r)))) ./ sum(popInitial(:)); % risk structure remains constant thorughout simulation
 end
@@ -117,14 +117,12 @@ disp('Running...')
 tic
 % Run sim-1 simulations in parfor loop
 parfor i = 2 : sims
-    condUseMult = ones(1 , 3);
-    for j = 1 : risk
-        condUseMult(j) = abs(normrnd(1 , 0.5)); % draw condom usage multiplier from a normal distribution (positive values only)
-    end
+    condUseMult = abs(normrnd(1 , 0.5)); % draw condom usage multiplier from a normal distribution (positive values only)
     gcClearMult = abs(normrnd(1 , 0.5)); % draw GC clearance multiplier from a normal distribution (positive values only)
     gcClear = gcClearMult .* gcClear_Base;
     condUse = condUseMult .* condUse_Base;
-    condUseVec(i , :) = condUse;
+    condUse(any(condUse > 0.95 , 1)) = 0.95; % cap condom usage to 95% 
+    condUseVec(i , :) = condUse; 
     gcClearVec(i) = gcClear(1 , 1);
     [t , popArray{i}] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
         risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
@@ -140,6 +138,7 @@ gcClearMult = normrnd(1 , 0.5);
 gcClear = gcClearMult .* gcClear_Base;
 condUse = condUseMult .* condUse_Base;
 condUseVec(1 , :) = condUse;
+condUse(any(condUse > 0.95 , 1)) = 0.95; % cap condom usage to 95% 
 gcClearVec(1) = gcClear(1 , 1);
 [t , popArray{1}] = ode45(@(t , pop) mixInfect(t , pop , hivStatus , stiTypes , sites , ...
     risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...

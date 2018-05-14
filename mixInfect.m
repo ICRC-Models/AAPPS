@@ -1,5 +1,5 @@
 function dPop = mixInfect(t , pop , hivStatus , stiTypes , sites , ...
-    risk , popNew , kDie , gcClear , d_routineTreatMat , routineTreatMat_init , ...
+    risk , popNew , kDie , kBorn , gcClear , d_routineTreatMat , routineTreatMat_init , ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
     kHivScreen_init , d_kHivScreen , kHivTreat , partners , acts , riskVec ,...
     condUse , d_hAssort , hScale , hAssort_init , rAssort , tVec)
@@ -129,6 +129,11 @@ partners_hivNeg = squeeze(mean(partners(1 : 2 , : , :) , 1)); % [risk x act type
 
 partners_anal = [partners_hivNeg(: , 1) , partners_hivPos(: , 1) , partners_hivImm(: , 1)];
 partners_oral = [partners_hivNeg(: , 2) , partners_hivPos(: , 2) , partners_hivImm(: , 2)];
+
+% increase partners in high risk groups
+partners_anal(1 , :) = 1.5 .* partners_anal(1, :);
+partners_oral(1 , :) = 1.5 .* partners_oral(1, :);
+
 fracPop = [hivNeg_Risk ; hivPos_Risk ; hivImm_Risk];
 % fracAct = zeros(size(partners));
 % actTypes = 2;
@@ -442,16 +447,16 @@ gcHivTreat(3 , 2 , : , :) = kHivTreat * pop(3 , 2 , : , :);
 dPop(3 , 1 , 1 , :) = dPop(3 , 1 , 1 , :) - hivTreat(3 , 1 , 1 , :); % GC-, HIV screened -> 
 dPop(4 , 1 , 1 , :) = dPop(4 , 1 , 1 , :) + hivTreat(3 , 1 , 1 , :);  % -> GC-, HIV treated
 dPop(3 , 2 , : , :) = dPop(3 , 2 , : , :) - gcHivTreat(3 , 2 , : , :); % GC+, HIV screened ->
-dPop(4 , 2 , : , :) = dPop(4 , 2 , : , :) + gcHivTreat(3 , 2 , : , :); % -> GC+, HIV treated
+dPop(4 , 1 , : , :) = dPop(4 , 1 , : , :) + gcHivTreat(3 , 2 , : , :); % -> GC-, HIV treated
 
 %% Births and Deaths
 dPop_bd = -kDie .* pop; % uniformly remove a fraction of the population
 % replace fraction with a scaled-down version of the seed population
-dPop_bd = dPop_bd + popNew; 
-% for r = 1 : 3
-%     dPop_bd(1 , 1 , 1 , r) = dPop_bd(1 , 1 , 1 , r) ...
-%         + sum(kBorn .* pop(:)) .* riskVec(r);
-% end
+%dPop_bd = dPop_bd + popNew; 
+for r = 1 : 3
+    dPop_bd(1 , 1 , 1 , r) = dPop_bd(1 , 1 , 1 , r) ...
+        + sum(kBorn .* pop(:)) .* riskVec(r);
+end
 dPop = dPop + dPop_bd;
 
 % convert dPop back to column vector for ODE solver
