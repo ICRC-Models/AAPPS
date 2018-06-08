@@ -25,7 +25,6 @@ hAssort = hScale .* d_hAssort + hAssort_init;
 %%
 pop = reshape(pop , [hivStatus , stiTypes , sites , risk]);
 
-% perActInf = [0 , 0.84 , 0; 0.243 , 0 , 0.0865 ; 0 , 0.62 , 0];
 % GC transmission probabilties by site and mode of transmission
 % 'x' indicates that transmission does not occur by this route
 
@@ -119,7 +118,7 @@ for h = 1 : 3
     end
 end
 
-% Adjust partners to account for discrepancies in reporting
+% Adjust partners
 % Ensures number of partners that group a has coming from group b is equal 
 % to the number of partners group b has coming from group a
 % dim(partners) = [hiv state x risk x act type]
@@ -144,6 +143,7 @@ hivNegPosImm = 3;
 adjustFac_anal = zeros(hivNegPosImm , hivNegPosImm , risk , risk);
 adjustFac_oral = adjustFac_anal;
 % ratio of HIV+ with infection at site : HIV- with infection at site
+% obtain adjustment factors for partnerships
 for r = 1 : risk
     for rr = 1 : risk
         for h = 1 : hivNegPosImm
@@ -177,20 +177,28 @@ for r = 1 : risk
     for rr = 1 : risk
         for h = 1 : hivNegPosImm
             for hh = 1 : hivNegPosImm
+                frac = 0;
+                if fracPop(hh , rr) > 10 ^ -6
+                    frac = fracPop(h , r) / fracPop(hh , rr);
+                end
                 % Adjust anal partners
                 if adjustFac_anal(h , hh , rr , r) ~= 0
                     analPartnersAdj(h , hh , rr , r) = partners_anal(r , h) ...
+                        .* frac ^ theta ...
                         * adjustFac_anal(h , hh , rr , r) .^ -(1 - theta);
                
                     analPartnersAdj(hh , h , r , rr) = partners_anal(rr , hh) ...
+                        .* frac ^ -(1 - theta)...
                         * adjustFac_anal(h , hh , rr , r) .^ theta;
                 end
                 % Adjust oral partners
                 if adjustFac_oral(h , hh , rr , r) ~= 0
                     oralPartnersAdj(h , hh , rr , r) = partners_oral(r , h) ...
+                        .* frac ^ theta...
                         * adjustFac_oral(h , hh , rr , r) .^ -(1 - theta);
 
                     oralPartnersAdj(hh , h , r , rr) = partners_oral(rr , hh) ...
+                        .* frac ^ -(1 - theta)...
                         * adjustFac_oral(h , hh , rr , r) .^ theta;
                 end
             end
@@ -205,10 +213,10 @@ end
 perYear_AnalInf = zeros(hivNegPosImm , stiTypes , 3 , risk , sites , sites);
 perYear_OralInf = perYear_AnalInf;
 popSubs = [sum(byHiv(1 : 2 , :)) ; sum(byHiv(3 : 4 , :)) ; byHiv(5 , :)]; % pop subtotals by hiv status. hivNeg includes HIV+ who think they are negative
-hivNegPop = sum(pop(1 : 2 , : , : , :) , 1);
-hivPosActual = sum(pop(2 , : , : , :) , 1);
-hivPosPop = sum(pop(3 : 4 , : , : , :) , 1);
-hivImmPop = pop(5 , : , : , :);
+hivNegPop = sum(pop(1 : 2 , : , : , :) , 1); % (1) HIV-negative and HIV-infected/status unknown group
+hivPosActual = sum(pop(2 , : , : , :) , 1); % HIV-infected/status unknown (a subset of (1))
+hivPosPop = sum(pop(3 : 4 , : , : , :) , 1); % (2) HIV-tested and HIV-treated group
+hivImmPop = pop(5 , : , : , :); % (3) PrEP group 
 pops = {hivNegPop , hivPosPop , hivImmPop};
 % Anal transmission probability for non-HIV STIs
 perPartner_Anal = [zeros(1 , 3) ; perPartner_Anal];
@@ -230,7 +238,7 @@ for h = 1 : hivNegPosImm
                         if popGroup(ty , ss , r) > 10 ^ -6
                             contactProb = popGroup(ty , ss , r) ./ popSubtotal; % proportion of pop with sti 
                         end
-                        contactProbHiv = 0; % for HIV positive or HIV-immune group (HIV status known)
+                        contactProbHiv = 0; % initialize/for HIV positive or HIV-immune group (HIV status known)
                         % per partner transmission probabilities
                         joint = perPartner_Anal(s , ss) * perPartnerHiv; % sti and hiv
                         p_hiv = perPartnerHiv; % hiv
@@ -244,7 +252,7 @@ for h = 1 : hivNegPosImm
                             - log(1 - (ty > 1) * perPartner_Anal(s , ss)) ... % evaluate probability of getting STI for STI indices, i.e. if t > 1
                             .* contactProb .* (1 - condUse(r));
                         
-                        if h <= 3 % getting HIV from infectious or tested, no transmission from HIV-positive on ART
+                        if h < 3 % getting HIV from infectious, no transmission from HIV-positive on ART/tested
                             perYear_AnalInf(h , ty , 2 , r , s , ss) = ... % probability of getting HIV
                                 - log(1 - (p_hiv - joint * (ty > 1))) ...
                                 .* contactProbHiv .* (1 - condUse(r));  % ADD protection from condoms here
@@ -305,9 +313,6 @@ for hivStat = 1 : hivNegPosImm
     end
 end
 lambda = lambda_Anal + lambda_Oral;
-% lambda(2 : 3 , : , 2 : 3 , : , :) = 0; % HIV-positive/immune cannot be reinfected   
-% dims: (hivNegPosImm (3) , risk , infs (Other STI, HIV , HIV + Other STI) , stiTypes , sites)
-% lambda = min(lambda , 0.999);
 if any(imag(lambda(:)))
     disp('stop')
 end
@@ -325,7 +330,7 @@ for sTo = 1 : sites
         dPop(2 , 2 : stiTypes , sTo , r) = ...
             dPop(2 , 2 : stiTypes , sTo , r) + infected;
         
-        for tTo = 2 : stiTypes
+        for tTo = 1 : stiTypes
             %STI-negative, HIV-positive / HIV-immune
             for h = 2 : hivStatus
                 hivStat = 2; % infectious, tested, treated
@@ -341,7 +346,7 @@ for sTo = 1 : sites
             end
         end
         
-        for tTo = 2 : stiTypes
+        for tTo = 1 : stiTypes
             %  All-negative
             for i = 1 : 3
                 hTo = 1;
@@ -430,7 +435,7 @@ dPop(3 , 1 , 1 , :) = dPop(3 , 1 , 1 , :) ... % -> HIV tested and GC negative
 %% HIV 
 % Screening (Partner Services and Routine)
 psScreen(2 , 1 , 1 , :) =... %HIV testing through partner services
-    mean(psTreatMat(: , 2)) .* pop(2 , 1 , 1 , :);
+    mean(psTreatMat(: , 2)) .* pop(2 , 1 , 1 , :) * 0; %no PS screening for HIV for now
 
 routScreen(2 , 1 , 1 , :) =  ... % HIV testing through routine screening
     kHivScreen .* pop(2 , 1 , 1 , :);

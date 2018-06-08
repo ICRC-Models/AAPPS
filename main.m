@@ -12,8 +12,8 @@ tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
 popInitial(1 , 1 , 1 , 3) =  70469;% - 10000 + 10526 + 27366; % N (low risk)
 popInitial(1 , 1 , 1 , 2) = 10000 * 0.8; 
-popInitial(1 , 1 , 1 , 1) = 10000 * 0.75;
-popInitial(1 , 2 , 2 : 4 , 1 : 2) = 10;
+popInitial(1 , 1 , 1 , 1) = 10000 * 0.9;
+popInitial(1 , 2 , 2 : 4 , 1 : 2) = 100;
 popInitial(2 , 1 , 1 , 1) = 10000 * 0.1;
 popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
 % condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
@@ -34,9 +34,9 @@ intStart = startYear; % start year for intervention
 intPlat = startYear + 15; % plateau year for intervention
 
 % partner services
-psTreatMatTarget = 2 .* (1 - exp(-(p_ps .* kDiagTreat)));
+psTreatMatTarget = (1 - exp(-(p_ps .* kDiagTreat)));
 % routine treatment scale-up
-routineTreatMatTarget = 2 .* (1 - exp(-(p_routine .* kDiagTreat)));
+routineTreatMatTarget = (1 - exp(-(p_routine .* kDiagTreat)));
 routineTreatMat_init = 0.1 .* routineTreatMatTarget;
 
 % intial value before intervention starts
@@ -52,7 +52,7 @@ intPlatInd_HivScreen = round((hivScreenPlat - startYear) * stepsPerYear) + 1; % 
 % ramp up from intervention start year to plateau year
 
 % increment in GC and HIV screening from start year to plateau year
-kHivScreen_init = 0;
+kHivScreen_init = 0.01;
 kHivScreen = 0.2; %5; % 50% HIV screen rate plateau (assumption) TEST 1/2
 d_psTreatMat = psTreatMatTarget ./ (intPlatInd - intStartInd); % increment in GC and HIV screening through PS from start to plateau year 
 d_routineTreatMat = (routineTreatMatTarget - routineTreatMat_init) ./ (intPlatInd - intStartInd); % increment in GC and HIV screening through routine screening from start to plateau year 
@@ -69,7 +69,7 @@ fScale_HivScreen(intPlatInd_HivScreen : end) = intPlatInd_HivScreen - intStartIn
 fScale_HivScreen(intStartInd_HivScreen : intPlatInd_HivScreen) = [0 : intPlatInd_HivScreen - intStartInd_HivScreen];
 
 %%
-% scale-up HIV serosorting from 1990 (hAssStart) to 2000 (hAssPlat)
+% scale-up HIV serosorting from (hAssStart) to 2000 (hAssPlat)
 hAssStart = startYear; % HIV assorting start year
 hAssPlat = 2000; % HIV assorting plateau year
 hAssStartInd = round((hAssStart - startYear) * stepsPerYear) + 1; % index corresponding to HIV assorting start year
