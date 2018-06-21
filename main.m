@@ -17,7 +17,7 @@ popInitial(1 , 2 , 2 : 4 , 1 : 2) = 100;
 popInitial(2 , 1 , 1 , 1) = 10000 * 0.1;
 popInitial(2 , 1 , 1 , 2) = 9000 * 0.2;
 % condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
-condUse = [0.23 , 0.25 , 0.75]; % condom usage by risk group (high, med, low) TEST!!!
+condUse = [0.23 , 0.25 , 1]; % condom usage by risk group (high, med, low) TEST!!!
 riskVec = zeros(risk , 1);
 popNew = popInitial .* 0.01;
 for r = 1 : risk
@@ -81,7 +81,7 @@ d_hAssort = (hAssortTarget - hAssort_init) ./ (hAssPlatInd - hAssStartInd);
 hScale(hAssStartInd : end) = hAssPlatInd - hAssStartInd;
 hScale(hAssStartInd : hAssPlatInd) = [0 : hAssPlatInd - hAssStartInd];
 
-rAssort = 0.9; % risk assortativity
+rAssort = 0.90; % risk assortativity
 
 kHivTreat = 1-exp(-0.9); % Hypothetical HIV treatment rate
 % gcClear = gcClear;
@@ -273,6 +273,15 @@ area(t , riskDistHiv)
 legend('High Risk' , 'Medium Risk' , 'Low Risk')
 xlabel('Year'); ylabel('Proportion')
 title('HIV Prevalence by Risk Group')
+
+%%
+lowRiskHiv = squeeze(sum(sum(sum(pop(: , 2 : 4 , : , : , 3), 2), 3), 4)) ./ ...
+    squeeze(sum(sum(sum(sum(pop(: , : , : , : , 3), 2), 3), 4)));
+figure()
+area(t , lowRiskHiv)
+legend('Infected' , 'Tested' , 'Treated')
+xlabel('Year'); ylabel('Proportion')
+title('HIV Prevalence in Low Risk')
 %%
 % GC
 totalPop_Risk = squeeze(sum(sum(sum(pop(: , : , : , : , :), 2), 3) , 4));

@@ -247,18 +247,18 @@ for h = 1 : hivNegPosImm
                             contactProbHiv = hivPosActual(1 , ty , s , r) ./ popSubtotal; % proportion of "hiv-neg" that are really hiv-pos
                         end
                         
-                        % ADD protection from condoms here
+                        
                         perYear_AnalInf(h , ty , 1 , r , s , ss) = ... % probability of getting STI
                             - log(1 - (ty > 1) * perPartner_Anal(s , ss)) ... % evaluate probability of getting STI for STI indices, i.e. if t > 1
-                            .* contactProb .* (1 - condUse(r));
+                            .* contactProb;
                         
                         if h < 3 % getting HIV from infectious, no transmission from HIV-positive on ART/tested
                             perYear_AnalInf(h , ty , 2 , r , s , ss) = ... % probability of getting HIV
                                 - log(1 - (p_hiv - joint * (ty > 1))) ...
-                                .* contactProbHiv .* (1 - condUse(r));  % ADD protection from condoms here
+                                .* contactProbHiv;  
                             perYear_AnalInf(h , ty , 3 , r , s , ss) = ... probability of getting HIV and STI
                                 - log(1 - joint * (ty > 1)) ...
-                                .* contactProbHiv .* (1 - condUse(r));   % ADD protection from condoms here
+                                .* contactProbHiv;   
                             
                         end
                         
@@ -298,7 +298,8 @@ for hivStat = 1 : hivNegPosImm
                                 lambda_Anal(hivStat , r , i , ty , s) = lambda_Anal(hivStat , r , i , ty , s) ... 
                                     + analPartnersAdj(hivStat , hivStatPartner , rr , r) ...
                                     * mixMat(hivStat , hivStatPartner , rr , r)...
-                                    * perYear_AnalInf(hivStatPartner , ty , i , rr , s , ss);
+                                    * perYear_AnalInf(hivStatPartner , ty , i , rr , s , ss) ...
+                                    .* min((1 - condUse(r)) , (1 - condUse(rr)));
                                 
                                 lambda_Oral(hivStat , r , i , ty , s) = lambda_Oral(hivStat , r , i , ty , s) ...
                                     + oralPartnersAdj(hivStat , hivStatPartner , rr , r) ...
