@@ -3,7 +3,7 @@ hivStatus = 5; % (1) negative , (2) infectious , (3) tested , (4) treated...
 % (5) on PreP, HIV immune
 stiTypes = 2; % (1) none (2) gonorrhea, (3) chlamydia, (4) syphilis
 sites = 4; % (1) none (2) rectal, (3) urethral, (4) pharyngeal
-risk = 3;
+risk = 3; % (1) high (2) medium (3) low
 file = 'GC_HIV_ModelParameters.xlsx';
 kBorn = xlsread(file , 'Rates' , 'B37');
 kDie = xlsread(file , 'Rates' , 'B38');
@@ -63,7 +63,7 @@ c(4 , : , :) = xlsread(file , 'Partners' , 'A35 : B37');
 p_cond(4 , :) = 1 - xlsread(file , 'Partners' , 'B39 : B41');
 c(5 , : , :) = xlsread(file , 'Partners' , 'A46 : B48');
 p_cond(5 , :) = 1 - xlsread(file , 'Partners' , 'B50 : B52');
-acts = 24;
+acts = 27;
 save('partnerParams')
 
 
@@ -78,9 +78,9 @@ perActInf = xlsread(file , 'Rates' , 'D53 : D55');
 % proportion GC infected that are diagnosed
 % [N,I,K,V] x [R,U,P]
 kDiagTreat = xlsread(file , 'Rates' , 'B5 : E7'); % diagnosis rate of all GC-positive individuals by site and HIV status
-p_routine = xlsread(file , 'Rates' , 'B11 : E13'); % proportion of diagnosed GC-positive individuals diagnosed by routine exam
-p_symp = xlsread(file , 'Rates' , 'B17 : E19'); % propotion of all diagnosed GC-positive individuals diagnosed by symptoms
-p_ps = xlsread(file , 'Rates' , 'B23 : E25'); % proprotion of all diagnosed GC-positive individuals diagnosed by partner notification
+p_routine = xlsread(file , 'Rates' , 'B11 : F13'); % proportion of diagnosed GC-positive individuals diagnosed by routine exam
+p_symp = xlsread(file , 'Rates' , 'B17 : F19'); % propotion of all diagnosed GC-positive individuals diagnosed by symptoms
+p_ps = xlsread(file , 'Rates' , 'B23 : F25'); % proprotion of all diagnosed GC-positive individuals diagnosed by partner notification
 save('gcParams')
 
 
