@@ -33,7 +33,7 @@ popVec = zeros(length(tspan), hivStatus , stiTypes , sites , risk);
 %%
 partners = c;
 kDie = 0.0018;
-kBorn = 20 * kDie;
+kBorn = 7 * kDie;
 
 % sympref('HeavisideAtOrigin' , 1);
 %% Interventions
@@ -143,7 +143,7 @@ rAssStart = startYear ; % Risk assorting start year
 rAssPlat = 2020; % HIV assorting plateau year
 rAssStartInd = round((rAssStart - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting start year
 rAssPlatInd = round((rAssPlat - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting plateau year
-rAssortTarget = 0.7; % Target plateau value for risk assortativity
+rAssortTarget = 0.5; % Target plateau value for risk assortativity
 rAssort_init = 0.8; % Initial risk assortativity value
 rScale = zeros(length(tspan) , 1);
 d_rAssort = -(rAssort_init - rAssortTarget) ./ (rAssPlatInd - rAssStartInd);
@@ -155,8 +155,8 @@ cAssStart = startYear ; % Risk assorting start year
 cAssPlat = 2010; % HIV assorting plateau year
 cAssStartInd = round((cAssStart - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting start year
 cAssPlatInd = round((cAssPlat - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting plateau year
-cAssortTarget = [0.1, 0.15, 0.2]; % Target plateau values for condom use
-cAssort_init = [0.2 , 0.3 , 0.3]; % Initial condom use values
+cAssortTarget = [.6, .5, .5]; % Target plateau values for condom use
+cAssort_init = [.2, .25, .3]; % Initial condom use values
 cScale = zeros(length(tspan) , 3);
 d_cAssort = (cAssortTarget - cAssort_init) ./ (cAssPlatInd - cAssStartInd);
 cScale(:, :) = (cAssPlatInd - cAssStartInd);
