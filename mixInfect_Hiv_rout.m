@@ -43,14 +43,14 @@ pop = reshape(pop , [hivStatus , stiTypes , sites , risk]);
 % 'x' indicates that transmission does not occur by this route
 
 perAct_Anal = [0 ,    0.012,  0.0001;... % rectal -> (x, urethral , pharyngeal)
-               0.04,  0,      0 ; ... % urethral -> (rectal , x , x)
+               0.035,  0,      0 ; ... % urethral -> (rectal , x , x)
                0,     0,      0] .* .35; % pharyngeal -> (rectal , x , x)
 
 perAct_Oral = [0 ,   0,    0 ; ... % rectal -> (x , x , x)
                0 ,   0,    0.00005 ;... % urethral -> (x , x , pharyngeal)
                0.00005, 0.0043, 0 ] .* .3 ; % pharyngeal -> (rectal , urethral , x)
 
-perActHiv = 0.079 * 10 ^ -2; % anal transmission
+perActHiv = 0.084 * 10 ^ -2; % anal transmission
 
 acts = acts ./ 3; % half anal, half oral for testing
 
@@ -262,8 +262,8 @@ for h = 1 : hivNegPosImm
                             contactProbHiv = hivPosActual(1 , ty , s , r) ./ popSubtotal; % proportion of "hiv-neg" that are really hiv-pos
                         end
                          
-                        if h == 2 && hivPosPop(1, ty, s, r) > 10 ^ -6 % a small % of those tested will still transmit HIV
-                            contactProbHiv = (hivPosPop(1, ty, s, r) ./ popSubtotal) .* increment; 
+                        if h == 2 && hivTesPop(1, ty, s, r) > 10 ^ -6 % a small % of those tested will still transmit HIV
+                            contactProbHiv = (hivTesPop(1, ty, s, r) ./ popSubtotal) .* increment; 
                         end 
 
                         perYear_AnalInf(h , ty , 1 , r , s , ss) = ... % probability of getting STI
@@ -594,7 +594,7 @@ dPop(4 , 1 , : , :) = dPop(4 , 1 , : , :) + (gcHivTreat(3 , 2 , : , :) ); % -> G
 if t > 2008
     prep = zeros(size(pop));
     for r = 1 : risk 
-    prep_pct = 0.06 / r;
+    prep_pct = 0.03 / r;
     prep(5, :, :, r) = pop(1, : , :, r) .* (prep_pct);
     dPop(1, :, :, r) = dPop(1, : , :, r) - prep(5, :, :, r);
     dPop(5, :, :, r) = dPop(5, : , :, r) + prep(5, :, :, r);
@@ -616,10 +616,10 @@ end
 
 for r = 1 : risk
     if r == 1
-       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* 1.0;
+       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* .9;
     end 
     if r == 2
-       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* 1.3;
+       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* 1.5;
     end
     if r == 3
        riskVec(r) = 1 - (riskVec(1) + riskVec(2));
