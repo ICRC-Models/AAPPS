@@ -83,5 +83,23 @@ p_symp = xlsread(file , 'Rates' , 'B17 : F19'); % propotion of all diagnosed GC-
 p_ps = xlsread(file , 'Rates' , 'B23 : F25'); % proprotion of all diagnosed GC-positive individuals diagnosed by partner notification
 save('gcParams')
 
-
-end
+%% Calibration targets
+file = 'GC_HIV_ModelParameters.xlsx';
+hivPrev_obs = [xlsread(file , 'Targets' , 'A102:A111') , ... % Years
+                    xlsread(file , 'Targets' , 'D102:D111') , ... % Prevalent cases
+                    xlsread(file , 'Targets' , 'F102:F111') , ... % MSM in KC
+                    xlsread(file , 'Targets' , 'E102:E111')] ; % HIV prevalence percent
+hivInc_obs = xlsread(file , 'Targets' , 'C102:C111');
+gcRecPrev_obs = [xlsread(file , 'Targets' , 'A137:A142') , ... % Years
+                      xlsread(file , 'Targets' , 'B137:B142') , ... % Rectal cases
+                      xlsread(file , 'Targets' , 'F106:F111') , ... % MSM in KC
+                      xlsread(file , 'Targets' , 'C137:C142')]; % Rectal GC prevalence percent
+gcUrePrev_obs = [xlsread(file , 'Targets' , 'A137:A142') , ... % Years
+                      xlsread(file , 'Targets' , 'D137:D142') , ... % Urethral cases
+                      xlsread(file , 'Targets' , 'F106:F111') , ... % MSM in KC
+                      xlsread(file , 'Targets' , 'E137:E142')]; % Urethral GC prevalence percent
+gcPhaPrev_obs = [xlsread(file , 'Targets' , 'A137:A142') , ... % Years
+                      xlsread(file , 'Targets' , 'F137:F142') , ... % Pharyngeal cases
+                      xlsread(file , 'Targets' , 'F106:F111') , ... % MSM in KC
+                      xlsread(file , 'Targets' , 'G137:G142')]; % Pharyngeal GC prevalence percent
+save('calibTargets' , 'hivPrev_obs' , 'hivInc_obs' , 'gcRecPrev_obs' , 'gcUrePrev_obs' , 'gcPhaPrev_obs')
