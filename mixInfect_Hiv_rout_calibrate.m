@@ -1,4 +1,4 @@
-function [dPop, extraOut] = mixInfect_Hiv2(t , pop , hivStatus , stiTypes , sites ,  ...
+function [dPop, extraOut] = mixInfect_Hiv_rout_calibrate(t , pop , hivStatus , stiTypes , sites ,  ...
     risk , kDie , kBorn , gcClear, rout1Scale, d1_routineTreatMat , routine1TreatMat_init , ...
     rout2Scale, d2_routineTreatMat , routine2TreatMat_init, p_symp2 , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
     kHivScreen_init , d_kHivScreen , d_muHiv, muHiv_init, hTscale, d_hTreat, hTreat_init, partners , acts , riskVec ,...
@@ -34,7 +34,7 @@ rAssort = rScale .* d_rAssort + rAssort_init;
 condUse = cScale .* d_cAssort + cAssort_init;
 cotest = cotestScale .* d_cotest + cotestInit; 
 
-increment = flip(hTscale) .* (0.000004);
+%increment = flip(hTscale) .* (0.000004);
 
 %%
 pop = reshape(pop , [hivStatus , stiTypes , sites , risk]);
@@ -263,7 +263,7 @@ for h = 1 : hivNegPosImm
                         end
                          
                         if h == 2 && hivTesPop(1, ty, s, r) > 10 ^ -6 % a small % of those tested will still transmit HIV
-                            contactProbHiv = (hivTesPop(1, ty, s, r) ./ popSubtotal) .* increment; 
+                            contactProbHiv = (hivTesPop(1, ty, s, r) ./ popSubtotal) .* .1; 
                         end 
 
                         perYear_AnalInf(h , ty , 1 , r , s , ss) = ... % probability of getting STI
@@ -367,7 +367,7 @@ for sTo = 1 : sites
                 multGC = 1;
                 if h > 4 % PrEP
                     hivStat = 3;
-                    multGC = 2;
+                    multGC = 1.5;
                 end
                 infected = lambda(hivStat , r , 1 , tTo , sTo) .* multGC ...
                     .* pop(h , 1 , 1 , r);
