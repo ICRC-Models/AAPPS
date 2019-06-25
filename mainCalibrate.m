@@ -2,7 +2,7 @@ function [negSumLogL] = mainCalibrate(paramSet)
 
 % UNCOMMENT THE FOLLOWING TO TEST A PARAMETER SET (also need to comment (paramSet) input to function
 % % Use newly calibrated parameters
-% paramSet = load([pwd , '\' , 'hivGc_calib_21June19.dat']);
+%paramSet = load([pwd , '\' , 'hivGc_calib_21June19.dat']);
 % paramSet = [[13; 8; 11; 16; 15] ; [8; 5; 9; 12; 11] ; [1; 1; 1; 1; 1]; ...
 %     [4; 4; 6; 5; 5] ; [3; 1; 1; 4; 4] ; [1; 1; 1; 1; 1]; ...
 %     24; (0.084 * 10 ^ -2); [0.012*0.35; 0.0001*0.35; 0.035*0.35]; ...
@@ -20,18 +20,18 @@ endYear = 2041;
 tspan = startYear : 1 / stepsPerYear : endYear;
 tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
-popInitial(1 , 1 , 1 , 3) = 14100 * 1.8 - 300;% - 10000 + 10526 + 27366; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 1800 * 1.8 - 300;
-popInitial(1 , 1 , 1 , 1) = 1800 * 1.8 - 300;
-popInitial(1 , 2 , 2 : 4 , 1) = 190 * 3;
-popInitial(1 , 2 , 2 : 4 , 2) = 180 * 3;
-popInitial(1 , 2 , 2 : 4 , 3) = 460 * 3;
+popInitial(1 , 1 , 1 , 3) = 25080;% - 10000 + 10526 + 27366; % N (low risk)
+popInitial(1 , 1 , 1 , 2) = 3500;
+popInitial(1 , 1 , 1 , 1) = 3300;
+popInitial(1 , 2 , 2 , 1:3) = 900;
+popInitial(1 , 2 , 3 , 1:3) = 500;
+popInitial(1 , 2 , 4 , 1:3) = 900;
 % popInitial(2 , 2 , 2 : 4 , 1) = 500;
 % popInitial(2 , 2 , 2 : 4 , 2) = 600;
-popInitial(2 , 1 , 1 , 1) = 360 * 1.8;
-popInitial(2 , 2 , 2:4 , 1) = 40 * 1.8;
-popInitial(2 , 1 , 1 , 2) = 315 * 1.8;
-popInitial(2 , 2 , 2:4 , 2) = 35 * 1.8;
+popInitial(2 , 1 , 1 , 1) = 600;
+popInitial(2 , 2 , 2:4 , 1) = 70;
+popInitial(2 , 1 , 1 , 2) = 500;
+popInitial(2 , 2 , 2:4 , 2) = 60;
 % condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
 % condUse = [0.23, 0.29, 0.4]; % condom usage by risk group (high, med, low) TEST!!!
 riskVec = zeros(risk , 1);
@@ -40,7 +40,7 @@ popVec = zeros(length(tspan), hivStatus , stiTypes , sites , risk);
 
 % partners = c;
 kDie = 0.0018;
-kBorn = 7 * kDie;
+kBorn = 7.5 * kDie;
 
 % sympref('HeavisideAtOrigin' , 1);
 
@@ -126,7 +126,7 @@ end
 psTreatMatTarget = (p_ps + .3) .* p_symp .* 0;
 
 % routine treatment scale-up
-routine1TreatMat_init =  ones(3,4) .* 0.001; 
+routine1TreatMat_init =  ones(3,5) .* 0.001; 
 routine1TreatMatTarget = (1 - exp(-(p_routine .* .5)));
 
 routine2TreatMat_init =  routine1TreatMatTarget; 
@@ -187,8 +187,8 @@ fScale_HivScreen(intPlatInd_HivScreen : end) = intPlatInd_HivScreen - intStartIn
 fScale_HivScreen(intStartInd_HivScreen : intPlatInd_HivScreen) = [0 : intPlatInd_HivScreen - intStartInd_HivScreen];
 
 % HIV death rate 
-muHiv_init = 1 - exp(-0.03);
-muHiv_plat = 1 - exp(-0.001);
+muHiv_init = 1 - exp(-0.2);
+muHiv_plat = 1 - exp(-0.1);
 d_muHiv = (muHiv_plat - muHiv_init) ./ (intPlatInd_HivScreen - intStartInd_HivScreen);
 
 % HIV treatment 
@@ -211,8 +211,8 @@ hAssStart = startYear ; % HIV assorting start year
 hAssPlat = 2010; % HIV assorting plateau year
 hAssStartInd = round((hAssStart - startYear) * stepsPerYear) + 1; % index corresponding to HIV assorting start year
 hAssPlatInd = round((hAssPlat - startYear) * stepsPerYear) + 1; % index corresponding to HIV assorting plateau year
-hAssortTarget = 0.5; % Target plateau value for HIV assortativity
-hAssort_init = 0.2; % Initial HIV assortativity value
+hAssortTarget = 0.4; % Target plateau value for HIV assortativity
+hAssort_init = 0.5; % Initial HIV assortativity value
 hScale = zeros(length(tspan) , 1);
 d_hAssort = (hAssortTarget - hAssort_init) ./ (hAssPlatInd - hAssStartInd);
 hScale(hAssStartInd : end) = hAssPlatInd - hAssStartInd;
@@ -232,8 +232,8 @@ rScale(rAssStartInd : end) = rAssPlatInd - rAssStartInd;
 rScale(rAssStartInd : rAssPlatInd) = [0 : rAssPlatInd - rAssStartInd];
 
 %scale down condom use
-cAssStart = startYear ; % Risk assorting start year
-cAssPlat = 2010; % HIV assorting plateau year
+cAssStart = 2000 ; % Risk assorting start year
+cAssPlat = 2030; % HIV assorting plateau year
 cAssStartInd = round((cAssStart - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting start year
 cAssPlatInd = round((cAssPlat - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting plateau year
 % cAssortTarget = [.6, .5, .5]; % Target plateau values for condom use
@@ -243,7 +243,7 @@ d_cAssort = (cAssortTarget - cAssort_init) ./ (cAssPlatInd - cAssStartInd);
 cScale(:, :) = (cAssPlatInd - cAssStartInd);
 cScale(cAssStartInd:cAssPlatInd, : ) = [0 : cAssPlatInd - cAssStartInd; 0 : cAssPlatInd - cAssStartInd; 0 : cAssPlatInd - cAssStartInd]';
 
-cotestStart = 1990 ; % cotesting start year
+cotestStart = 2000 ; % cotesting start year
 cotestPlat = 2020; % cotesting plateau year
 cotestStartInd = round((cotestStart - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting start year
 cotestPlatInd = round((cotestPlat - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting plateau year
@@ -308,93 +308,110 @@ else
 end
 
 %% UNCOMMENT THE FOLLOWING TO TEST A PARAMETER SET
-% negSumLogL
-% % rename to avoid changes to plotting code
-% pop = popVec;
-% t = tspan';
-% annlz = @(x) sum(reshape(x , stepsPerYear , size(x , 1) / stepsPerYear));
-% %% HIV prevalence
-% hivYearVec = unique(hivPrev_obs(:,1));
-% hivPrev = zeros(1 , length(hivYearVec));
+%negSumLogL
+% rename to avoid changes to plotting code
+pop = popVec;
+t = tspan';
+annlz = @(x) sum(reshape(x , stepsPerYear , size(x , 1) / stepsPerYear));
+%% HIV prevalence
+hivYearVec = unique(hivPrev_obs(:,1));
+hivPrev = zeros(1 , length(hivYearVec));
+totalPop = sum(sum(sum(sum(pop , 2) , 3) , 4) , 5);
+hivAll = sum(sum(sum(sum(pop(: , 2 : 4 , : , : , :), 2) , 3) , 4) , 5) ./ totalPop * 100;
 % for ti = 1 : length(hivYearVec)
 %     time = (hivYearVec(ti) - startYear) * stepsPerYear;
 %     totalPop = sum(sum(sum(sum(popVec(time , : , : , : , :) , 2) , 3) , 4) , 5);
 %     hivPop = sum(sum(sum(sum(popVec(time , 2 : 4 , : , : , :), 2) , 3) , 4) , 5); 
 %     hivPrev(1,ti) = (hivPop / totalPop) * 100;
 % end
-% figure;
-% plot(hivPrev_obs(:,1)' , hivPrev)
-% hold all;
-% plot(hivPrev_obs(:,1)' , hivPrev_obs(:,4))
-% title('HIV prevalence');
-% 
-% %% HIV incidence
-% hivYearVec = unique(hivPrev_obs(:,1));
-% hivInc = zeros(1 , length(hivYearVec));
-% 
-% hivInf_noSti = annlz(squeeze(sum(newHiv(:,1,1,:),4))); % new HIV infections with no STI
-% hivInf_sti = annlz(squeeze(sum(sum(newHiv(:,2,2:4,:),3),4))); % new HIV infections with STI based on risk group
-% 
-% hivSus_noSti = annlz(squeeze(sum(pop(1:end-1,1,1,1,:),5)))./stepsPerYear; % number susceptible to HIV over year without STI
-% hivSus_sti = annlz(sum(sum(pop(1:end-1,1,2,2:4,:),4),5))./stepsPerYear; % number susceptible to HIV over year with STI
-% 
-% hivInc_noSti = (hivInf_noSti./hivSus_noSti).*100000;
-% hivInc_sti = (hivInf_sti./hivSus_sti).*100000;
-% 
-% hivInc_tot = ((hivInf_noSti+hivInf_sti)./(hivSus_noSti+hivSus_sti)).* 100000;
-% 
-% for ti = 1 : length(hivYearVec)
-%     time = (hivYearVec(ti) - startYear);
-%     hivInc(1,ti) = hivInc_tot(time);
-% end
-% 
-% figure()
-% plot(hivPrev_obs(:,1)' , hivInc)
-% hold all;
-% plot(hivPrev_obs(:,1)' , hivInc_obs(:,1))
-% title('HIV incidence');
-% 
-% %% GC prevalence
-% gcYearVec = unique(gcRecPrev_obs(:,1));
-% 
-% % Rectal GC
-% gcRecPrev = zeros(1 , length(gcYearVec));
-% for ti = 1 : length(gcYearVec)
-%     time = (gcYearVec(ti) - startYear) * stepsPerYear;
-%     totalPop = sum(sum(sum(sum(popVec(time , : , : , : , :) , 2) , 3) , 4) , 5);
-%     gcRecPop = sum(sum(popVec(time , : , 2 , 2 , :) , 2) , 5); 
-%     gcRecPrev(1,ti) = (gcRecPop / totalPop) * 100;
-% end
-% figure;
-% plot(gcRecPrev_obs(:,1)' , gcRecPrev)
-% hold all;
-% plot(gcRecPrev_obs(:,1)' , gcRecPrev_obs(:,4))
-% title('GC rectal prevalence');
-% 
-% % Urethral GC
-% gcUrePrev = zeros(1 , length(gcYearVec));
-% for ti = 1 : length(gcYearVec)
-%     time = (gcYearVec(ti) - startYear) * stepsPerYear;
-%     totalPop = sum(sum(sum(sum(popVec(time , : , : , : , :) , 2) , 3) , 4) , 5);
-%     gcUrePop = sum(sum(popVec(time , : , 2 , 3 , :) , 2) , 5); 
-%     gcUrePrev(1,ti) = (gcUrePop / totalPop) * 100;
-% end
-% figure;
-% plot(gcRecPrev_obs(:,1)' , gcUrePrev)
-% hold all;
-% plot(gcRecPrev_obs(:,1)' , gcUrePrev_obs(:,4))
-% title('GC urethral prevalence');
-% 
-% % Pharyngeal GC
-% gcPhaPrev = zeros(1 , length(gcYearVec));
-% for ti = 1 : length(gcYearVec)
-%     time = (gcYearVec(ti) - startYear) * stepsPerYear;
-%     totalPop = sum(sum(sum(sum(popVec(time , : , : , : , :) , 2) , 3) , 4) , 5);
-%     gcPhaPop = sum(sum(popVec(time , : , 2 , 4 , :) , 2) , 5); 
-%     gcPhaPrev(1,ti) = (gcPhaPop / totalPop) * 100;
-% end
-% figure;
-% plot(gcRecPrev_obs(:,1)' , gcPhaPrev)
-% hold all;
-% plot(gcRecPrev_obs(:,1)' , gcPhaPrev_obs(:,4))
-% title('GC pharyngeal prevalence');
+
+figure;
+plot(t , hivAll)
+hold all;
+plot(hivPrev_obs(:,1)' , hivPrev_obs(:,4))
+title('HIV prevalence');
+
+%% HIV incidence
+hivYearVec = unique(hivPrev_obs(:,1));
+hivInc = zeros(1 , length(hivYearVec));
+
+hivInf_noSti = annlz(squeeze(sum(newHiv(:,1,1,:),4))); % new HIV infections with no STI
+hivInf_sti = annlz(squeeze(sum(sum(newHiv(:,2,2:4,:),3),4))); % new HIV infections with STI based on risk group
+
+hivSus_noSti = annlz(squeeze(sum(pop(1:end-1,1,1,1,:),5)))./stepsPerYear; % number susceptible to HIV over year without STI
+hivSus_sti = annlz(sum(sum(pop(1:end-1,1,2,2:4,:),4),5))./stepsPerYear; % number susceptible to HIV over year with STI
+
+hivInc_noSti = (hivInf_noSti./hivSus_noSti).*100000;
+hivInc_sti = (hivInf_sti./hivSus_sti).*100000;
+
+hivInc_tot = ((hivInf_noSti+hivInf_sti)./(hivSus_noSti+hivSus_sti)).* 100000;
+
+for ti = 1 : length(hivYearVec)
+    time = (hivYearVec(ti) - startYear);
+    hivInc(1,ti) = hivInc_tot(time);
+end
+
+figure()
+plot(t(1:stepsPerYear:end-1),hivInc_tot)
+hold all;
+plot(hivPrev_obs(:,1)' , hivInc_obs(:,1))
+title('HIV incidence');
+
+%% GC prevalence
+gcYearVec = unique(gcRecPrev_obs(:,1));
+
+% Rectal GC
+gcRecPrev = zeros(1 , length(gcYearVec));
+for ti = 1 : length(gcYearVec)
+    time = (gcYearVec(ti) - startYear) * stepsPerYear;
+    totalPop = sum(sum(sum(sum(popVec(time , : , : , : , :) , 2) , 3) , 4) , 5);
+    gcRecPop = sum(sum(popVec(time , : , 2 , 2 , :) , 2) , 5); 
+    gcRecPrev(1,ti) = (gcRecPop / totalPop) * 100;
+end
+figure;
+plot(gcRecPrev_obs(:,1)' , gcRecPrev)
+hold all;
+plot(gcRecPrev_obs(:,1)' , gcRecPrev_obs(:,4))
+title('GC rectal prevalence');
+
+% Urethral GC
+gcUrePrev = zeros(1 , length(gcYearVec));
+for ti = 1 : length(gcYearVec)
+    time = (gcYearVec(ti) - startYear) * stepsPerYear;
+    totalPop = sum(sum(sum(sum(popVec(time , : , : , : , :) , 2) , 3) , 4) , 5);
+    gcUrePop = sum(sum(popVec(time , : , 2 , 3 , :) , 2) , 5); 
+    gcUrePrev(1,ti) = (gcUrePop / totalPop) * 100;
+end
+figure;
+plot(gcRecPrev_obs(:,1)' , gcUrePrev)
+hold all;
+plot(gcRecPrev_obs(:,1)' , gcUrePrev_obs(:,4))
+title('GC urethral prevalence');
+
+% Pharyngeal GC
+gcPhaPrev = zeros(1 , length(gcYearVec));
+for ti = 1 : length(gcYearVec)
+    time = (gcYearVec(ti) - startYear) * stepsPerYear;
+    totalPop = sum(sum(sum(sum(popVec(time , : , : , : , :) , 2) , 3) , 4) , 5);
+    gcPhaPop = sum(sum(popVec(time , : , 2 , 4 , :) , 2) , 5); 
+    gcPhaPrev(1,ti) = (gcPhaPop / totalPop) * 100;
+end
+figure;
+plot(gcRecPrev_obs(:,1)' , gcPhaPrev)
+hold all;
+plot(gcRecPrev_obs(:,1)' , gcPhaPrev_obs(:,4))
+title('GC pharyngeal prevalence');
+
+
+%% GC prevalence plots
+allGC = sum(sum(sum(pop(: , 1 : hivStatus , 2  , 2 : sites , 1 : 3) , 2) , 4) , 5) ./ totalPop * 100;
+allGC_site = squeeze(bsxfun(@rdivide , ...
+    sum(sum(pop(: , 1 : hivStatus , 2  , 2 : sites , 1 : 3) , 2) , 5) , ...
+    totalPop)) * 100;
+figure()
+plot(t, allGC, t , allGC_site)
+xlim([startYear endYear])
+title('GC Prevalence')
+xlabel('Year'); ylabel('Prevalence (%)')
+legend({'Overall', 'Rectal' , 'Urethral' , 'Pharyngeal'}, 'Location', 'northwest')
+% axis([tVec(1) tVec(end) 0 50])
