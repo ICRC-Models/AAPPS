@@ -1,8 +1,8 @@
 function [dPop, extraOut] = mixInfect_Hiv2(t , pop , hivStatus , stiTypes , sites ,  ...
     risk , kDie , kBorn , gcClear, rout1Scale, d1_routineTreatMat , routine1TreatMat_init , ...
     rout2Scale, d2_routineTreatMat , routine2TreatMat_init, p_symp2 , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
-    kHivScreen_init , d_kHivScreen , d_muHiv, muHiv_init, hTscale, d_hTreat, hTreat_init, partners , acts , riskVec ,...
-    cScale, d_cAssort, cAssort_init , d_hAssort , hScale , hAssort_init, d_cotest, cotestInit, cotestScale, ...
+    kHivScreen_init , d_kHivScreen , hTscale, d_hTreat, hTreat_init, partners , acts , riskVec ,...
+    cScale, d_cAssort, cAssort_init , d_hAssort , hScale , hAssort_init, d_muHiv, muHiv_init, d_cotest, cotestInit, cotestScale, ...
     d_rAssort , rScale, rAssort_init, tVec)
 %%
 sumall = @(x) sum(x(:));
@@ -23,7 +23,6 @@ rout2Scale = interp1(tVec , rout2Scale , t);
 routine2TreatMat = rout2Scale .* d2_routineTreatMat + routine2TreatMat_init;
 
 kHivScreen = fScale_HivScreen .* d_kHivScreen + kHivScreen_init;
-kMuHiv = fScale_HivScreen .* d_muHiv + muHiv_init;
 
 hTscale = interp1(tVec, hTscale, t);
 kHivTreat = hTscale .* d_hTreat + hTreat_init;
@@ -34,6 +33,7 @@ rAssort = rScale .* d_rAssort + rAssort_init;
 condUse = cScale .* d_cAssort + cAssort_init;
 cotest = cotestScale .* d_cotest + cotestInit; 
 
+kMuHiv = hScale .* d_muHiv + muHiv_init;
 increment = flip(hTscale) .* (0.000004);
 
 %%
@@ -44,13 +44,14 @@ pop = reshape(pop , [hivStatus , stiTypes , sites , risk]);
 
 perAct_Anal = [0 ,    0.012,  0.0001;... % rectal -> (x, urethral , pharyngeal)
                0.035,  0,      0 ; ... % urethral -> (rectal , x , x)
-               0,     0,      0] .* .35; % pharyngeal -> (rectal , x , x)
+               0,     0,      0] .* .3; % pharyngeal -> (rectal , x , x)
 
 perAct_Oral = [0 ,   0,    0 ; ... % rectal -> (x , x , x)
                0 ,   0,    0.00005 ;... % urethral -> (x , x , pharyngeal)
                0.00005, 0.0043, 0 ] .* .3 ; % pharyngeal -> (rectal , urethral , x)
 
-perActHiv = 0.084 * 10 ^ -2; % anal transmission
+perActHiv = 0.11 * 10 ^ -2; % anal transmission
+
 
 acts = acts ./ 3; % half anal, half oral for testing
 
@@ -263,7 +264,7 @@ for h = 1 : hivNegPosImm
                         end
                          
                         if h == 2 && hivTesPop(1, ty, s, r) > 10 ^ -6 % a small % of those tested will still transmit HIV
-                            contactProbHiv = (hivTesPop(1, ty, s, r) ./ popSubtotal) .* increment; 
+                            contactProbHiv = (hivTesPop(1, ty, s, r) ./ popSubtotal) .* 0.1; 
                         end 
 
                         perYear_AnalInf(h , ty , 1 , r , s , ss) = ... % probability of getting STI
@@ -348,7 +349,7 @@ for sTo = 1 : sites
     for r = 1 : risk 
         mult = 1;
         if sTo == 2 
-            mult = 1;
+            mult = 2.3;
         end
         % HIV-negative, STI positive (?? ty should be 2 ??)
         infected = lambda(1 , r , 2 , 2 , sTo) .* mult ... % first 2 describes the new infection that is occuring (HIV)
@@ -367,7 +368,7 @@ for sTo = 1 : sites
                 multGC = 1;
                 if h > 4 % PrEP
                     hivStat = 3;
-                    multGC = 2;
+                    multGC = 1.5;
                 end
                 infected = lambda(hivStat , r , 1 , tTo , sTo) .* multGC ...
                     .* pop(h , 1 , 1 , r);
@@ -513,9 +514,9 @@ Sp = 0.98;
 
 ppv = (hivPrev .* Se) / ((hivPrev .* Se)+((1 - Sp)*(1-hivPrev)));
 
-if t < 1990 
-    cotest = 0.05 .* ppv;
-end
+% if t < 1990 
+%     cotest = 0.05 .* ppv;
+% end
 if t >= 1990 && t < 2010
     cotest = 0.2 .* ppv;
 end
@@ -544,10 +545,13 @@ dPop(2 , 1 , 1 , :) = dPop(2 , 1 , 1 , :) ... % -> HIV infectious and GC negativ
     + (1 - cotest) .* sum(gc_sympTreat(2 , 2 , 2 : 4 , :) , 3) ...
     + (1 - cotest) .* sum(gc_routTreat(2 , 2 , 2 : 4 , :) , 3)...
     + (1 - cotest) .* sum(gc_psTreat(2 , 2 , 2 : 4 , :) , 3);%    + (1 - cotest) .* sum(gc_routTreat(2 , 2 , 2 : 4 , :) , 3)...
+
+if t > 1990
 dPop(3 , 1 , 1 , :) = dPop(3 , 1 , 1 , :) ... % -> HIV tested and GC negative
     + cotest .* sum(gc_sympTreat(2 , 2 , 2 : 4 , :) , 3)...
     + cotest .* sum(gc_routTreat(2 , 2 , 2 : 4 , :) , 3)...
     + cotest .* sum(gc_psTreat(2 , 2 , 2 : 4 , :) , 3);%    + cotest .* sum(gc_routTreat(2 , 2 , 2 : 4 , :) , 3)...
+end
 
 % HIV tested/treated and GC positive --> HIV tested/treated and GC negative
 for h = 3 : 4
@@ -605,7 +609,7 @@ end
  
 for h = 1 : hivStatus
     muHiv = 0;
-    if h > 1 && h < 3 
+    if h > 1 && h < 4 
         muHiv = kMuHiv;
     end
         dPop_bd(h, :, :, :) = -(kDie + muHiv) .* pop(h, :, :, :); % higher mortality rate among HIV+ MSM not on ART 
@@ -616,10 +620,10 @@ end
 
 for r = 1 : risk
     if r == 1
-       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* .9;
+       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* 1.05;
     end 
     if r == 2
-       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* 1.5;
+       riskVec(r) = riskVec(r) + (sum(sum(sum(dPop_bd(: , : , : , r)))) ./ sum(dPop_bd(:))) .* 1.6;
     end
     if r == 3
        riskVec(r) = 1 - (riskVec(1) + riskVec(2));
