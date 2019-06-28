@@ -12,18 +12,17 @@ endYear = 2041;
 tspan = startYear : 1 / stepsPerYear : endYear;
 tVec = tspan;
 popInitial = zeros(hivStatus , stiTypes , sites , risk);
-popInitial(1 , 1 , 1 , 3) = 14100 * 1.8 - 300;% - 10000 + 10526 + 27366; % N (low risk)
-popInitial(1 , 1 , 1 , 2) = 1800 * 1.8 - 300;
-popInitial(1 , 1 , 1 , 1) = 1800 * 1.8 - 300;
-popInitial(1 , 2 , 2 : 4 , 1) = 190 * 3;
-popInitial(1 , 2 , 2 : 4 , 2) = 180 * 3;
-popInitial(1 , 2 , 2 : 4 , 3) = 460 * 3;
-% popInitial(2 , 2 , 2 : 4 , 1) = 500;
-% popInitial(2 , 2 , 2 : 4 , 2) = 600;
-popInitial(2 , 1 , 1 , 1) = 360 * 1.8;
-popInitial(2 , 2 , 2:4 , 1) = 40 * 1.8;
-popInitial(2 , 1 , 1 , 2) = 315 * 1.8;
-popInitial(2 , 2 , 2:4 , 2) = 35 * 1.8;
+popInitial(1 , 1 , 1 , 3) = 25080; % low risk
+popInitial(1 , 1 , 1 , 2) = 3500; % meidum risk
+popInitial(1 , 1 , 1 , 1) = 3300; % high risk
+popInitial(1 , 2 , 2 , 1:3) = 900;
+popInitial(1 , 2 , 3 , 1:3) = 500;
+popInitial(1 , 2 , 4 , 1:3) = 900;
+
+popInitial(2 , 1 , 1 , 1) = 600;
+popInitial(2 , 2 , 2:4 , 1) = 70;
+popInitial(2 , 1 , 1 , 2) = 500;
+popInitial(2 , 2 , 2:4 , 2) = 60;
 % condUse = [0.23 , 0.25 , 0.44]; % condom usage by risk group (high, med, low)
 % condUse = [0.23, 0.29, 0.4]; % condom usage by risk group (high, med, low) TEST!!!
 riskVec = zeros(risk , 1);
@@ -33,7 +32,8 @@ popVec = zeros(length(tspan), hivStatus , stiTypes , sites , risk);
 %%
 partners = c;
 kDie = 0.0018;
-kBorn = 7 * kDie;
+kBorn = 8 * kDie;
+acts = 24; 
 
 % sympref('HeavisideAtOrigin' , 1);
 %% Interventions
@@ -86,8 +86,8 @@ rout2Scale(rout2PlatInd : end) = rout2PlatInd - rout2StartInd; % scale factor fo
 rout2Scale(rout2StartInd : rout2PlatInd) = [0 : rout2PlatInd - rout2StartInd];
 
 %% Scale factor for HIV screening and treatment 
-hivScreenStart = startYear + 5;
-hivScreenPlat = 2020;
+hivScreenStart = 1990;
+hivScreenPlat = 2015;
 
 intStartInd_HivScreen = round((hivScreenStart - (startYear)) * stepsPerYear) + 1; % index corresponding to HIV screen start year
 intPlatInd_HivScreen = round((hivScreenPlat - (startYear)) * stepsPerYear) + 1; % index corresponding to HIV screen plateau year
@@ -105,14 +105,10 @@ fScale_HivScreen = zeros(length(tspan) , 1);
 fScale_HivScreen(intPlatInd_HivScreen : end) = intPlatInd_HivScreen - intStartInd_HivScreen; % scale factor for plateau value
 fScale_HivScreen(intStartInd_HivScreen : intPlatInd_HivScreen) = [0 : intPlatInd_HivScreen - intStartInd_HivScreen];
 
-% HIV death rate 
-muHiv_init = 1 - exp(-0.03);
-muHiv_plat = 1 - exp(-0.001);
-d_muHiv = (muHiv_plat - muHiv_init) ./ (intPlatInd_HivScreen - intStartInd_HivScreen);
 
 % HIV treatment 
-hTreatStart = startYear + 5;
-hTreatPlat = 2020;
+hTreatStart = 1994;
+hTreatPlat = 2015;
 hTreatStartInd = round((hTreatStart - startYear) * stepsPerYear) + 1 ;
 hTreatPlatInd = round((hTreatPlat - startYear) * stepsPerYear) + 1; 
 hTreatTarget = 0.8; %1-exp(-0.45); % Hypothetical HIV treatment rate
@@ -130,8 +126,8 @@ hAssStart = startYear ; % HIV assorting start year
 hAssPlat = 2010; % HIV assorting plateau year
 hAssStartInd = round((hAssStart - startYear) * stepsPerYear) + 1; % index corresponding to HIV assorting start year
 hAssPlatInd = round((hAssPlat - startYear) * stepsPerYear) + 1; % index corresponding to HIV assorting plateau year
-hAssortTarget = 0.5; % Target plateau value for HIV assortativity
-hAssort_init = 0.2; % Initial HIV assortativity value
+hAssortTarget = 0.4; % Target plateau value for HIV assortativity
+hAssort_init = 0.5; % Initial HIV assortativity value
 hScale = zeros(length(tspan) , 1);
 d_hAssort = (hAssortTarget - hAssort_init) ./ (hAssPlatInd - hAssStartInd);
 hScale(hAssStartInd : end) = hAssPlatInd - hAssStartInd;
@@ -151,19 +147,19 @@ rScale(rAssStartInd : end) = rAssPlatInd - rAssStartInd;
 rScale(rAssStartInd : rAssPlatInd) = [0 : rAssPlatInd - rAssStartInd];
 
 %scale down condom use
-cAssStart = startYear ; % Risk assorting start year
-cAssPlat = 2010; % HIV assorting plateau year
+cAssStart = 2000 ; % Risk assorting start year
+cAssPlat = 2030; % HIV assorting plateau year
 cAssStartInd = round((cAssStart - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting start year
 cAssPlatInd = round((cAssPlat - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting plateau year
-cAssortTarget = [.6, .5, .5]; % Target plateau values for condom use
-cAssort_init = [.2, .25, .3]; % Initial condom use values
+cAssortTarget = [.3, .3, .4]; % Target plateau values for condom use
+cAssort_init = [.2, .35, .45]; % Initial condom use values
 cScale = zeros(length(tspan) , 3);
 d_cAssort = (cAssortTarget - cAssort_init) ./ (cAssPlatInd - cAssStartInd);
 cScale(:, :) = (cAssPlatInd - cAssStartInd);
 cScale(cAssStartInd:cAssPlatInd, : ) = [0 : cAssPlatInd - cAssStartInd; 0 : cAssPlatInd - cAssStartInd; 0 : cAssPlatInd - cAssStartInd]';
 
 cotestStart = 1990 ; % cotesting start year 
-cotestPlat = 2020; % cotesting plateau year
+cotestPlat = 2040; % cotesting plateau year
 cotestStartInd = round((cotestStart - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting start year
 cotestPlatInd = round((cotestPlat - startYear) * stepsPerYear) + 1; % index corresponding to risk assorting plateau year
 cotestTarget = 0.6;
@@ -172,6 +168,11 @@ cotestScale = zeros(length(tspan) , 1);
 d_cotest = (cotestTarget - cotestInit) ./ (cotestPlatInd - cotestStartInd);
 cotestScale(cotestPlatInd : end) = cotestPlatInd - cotestStartInd;
 cotestScale(cotestStartInd : cotestPlatInd) = [0 : cotestPlatInd - cotestStartInd];
+
+% HIV death rate 
+muHiv_init = 1 - exp(-0.1);
+muHiv_plat = 1 - exp(-0.1);
+d_muHiv = (muHiv_plat - muHiv_init) ./ (hAssPlatInd - hAssStartInd);
 
 % gcClear = gcClear;
 
@@ -223,8 +224,8 @@ for time = 1:length(tspan)-1
     risk , kDie , kBorn , gcClear , rout1Scale, d1_routineTreatMat , routine1TreatMat_init , ...
     rout2Scale, d2_routineTreatMat , routine2TreatMat_init, ...
     p_symp , fScale ,fScale_HivScreen , d_psTreatMat , kDiagTreat , ...
-    kHivScreen_init , d_kHivScreen , d_muHiv, muHiv_init,  hTscale, d_hTreat, hTreat_init, partners , acts , riskVec ,...
-    cScale, d_cAssort, cAssort_init , d_hAssort , hScale , hAssort_init, d_cotest, cotestInit, cotestStartInd, ...
+    kHivScreen_init , d_kHivScreen ,  hTscale, d_hTreat, hTreat_init, partners , acts , riskVec ,...
+    cScale, d_cAssort, cAssort_init , d_hAssort , hScale , hAssort_init, d_muHiv, muHiv_init, d_cotest, cotestInit, cotestStartInd, ...
     d_rAssort , rScale, rAssort_init, tVec) , tspanStep , popIn);
 
     popIn = reshape(pop(end,:) , [hivStatus , stiTypes , sites , risk]);
